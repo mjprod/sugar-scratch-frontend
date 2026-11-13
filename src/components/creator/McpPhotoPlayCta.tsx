@@ -3,6 +3,7 @@ import { Play } from "lucide-react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import "./mcp-photo-play-cta-css.css";
 
 const MOBILE_CTA_QUERY = "(max-width: 980px)";
@@ -44,6 +45,7 @@ export function McpPhotoPlayCta({
   onPlay,
 }: McpPhotoPlayCtaProps) {
   const cssCta = useCssPhotoCta();
+  const gradWrapRef = useMcpCtaGradMotion(cssCta);
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -129,7 +131,7 @@ export function McpPhotoPlayCta({
       onClick={(event) => event.stopPropagation()}
     >
       {cssCta ? (
-        <div className="mcp-photo-play-cta-css-wrap">
+        <div ref={gradWrapRef} className="mcp-photo-play-cta-css-wrap">
           <button
             type="button"
             className={[

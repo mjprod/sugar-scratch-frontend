@@ -824,10 +824,15 @@ body[data-theme="v8"] .cpv2-theme-page-title {
 /*
  * Packs buy page: container fills remaining viewport; cards keep intrinsic size.
  * --cpv2-packs-top-chrome ≈ header + safe-area (~126px on phone).
+ * Full-bleed past the padded .cpv2-shell so the WebGL canvas hits viewport edges.
  */
 body[data-theme="v8"] .cpv2-packs-coverflow {
   --cpv2-packs-top-chrome: 7.875rem;
-  width: 100%;
+  width: 100vw;
+  max-width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: 0;
+  padding: 0;
 }
 
 body[data-theme="v8"] .cpv2-packs-coverflow .home-featured-coverflow {

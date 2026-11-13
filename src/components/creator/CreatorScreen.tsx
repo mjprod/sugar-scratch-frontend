@@ -36,6 +36,7 @@ import {
   fetchCreatorBoard,
   type CreatorBoard,
 } from "@/services/creatorBoard";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import "@/components/collection/CollectionPage.css";
 import "./creator-collection.css";
 import "./creator-influencer.css";
@@ -142,6 +143,7 @@ function CreatorScreenInner({
       ? window.matchMedia(MOBILE_CTA_QUERY).matches
       : false,
   );
+  const buyGradWrapRef = useMcpCtaGradMotion(cssBuyCta);
 
   useEffect(() => {
     setFollowing(isFollowing(followId));
@@ -411,7 +413,7 @@ function CreatorScreenInner({
             .join(" ")}
         >
           {cssBuyCta ? (
-            <div className="mcp-photo-play-cta-css-wrap">
+            <div ref={buyGradWrapRef} className="mcp-photo-play-cta-css-wrap">
               <button
                 type="button"
                 className="mcp-photo-play-cta-css mcp-photo-play-cta-css--profile-buy"

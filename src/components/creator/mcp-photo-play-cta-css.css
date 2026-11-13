@@ -45,6 +45,11 @@
   }
 }
 
+/* Device tilt on: freeze CSS orbit; --mcp-cta-grad-angle set from JS. */
+.mcp-photo-play-cta-css-wrap.is-motion-grad {
+  animation: none;
+}
+
 /* Disabled: freeze rim gradient orbit + mesh blobs. */
 .mcp-photo-play-cta-css-wrap.is-disabled {
   animation-play-state: paused;

@@ -397,7 +397,7 @@ html[data-bar-plate-outline="1"] .symbol-bar::after {
   pointer-events: none;
 }
 
-/* Game diamond: drop in from above once the scratch dock has landed.
+/* AutoScratch A: drop in from above once the scratch dock has landed.
    Horizontal inset is --game-hud-edge on the chrome (stage cqi, not dvw). */
 .stage-game__diamond-enter {
   margin-inline-end: 0;
@@ -978,7 +978,7 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   max-width: min(
     var(--game-top-bar-width, 100%),
     calc(
-      100% - (2 * var(--game-hud-edge, 34px)) - (2 * var(--game-hud-btn, 40px)) -
+      100% - (2 * var(--game-hud-edge, 24px)) - (2 * var(--game-hud-btn, 48px)) -
         (2 * var(--game-dock-clear, 4px))
     )
   ) !important;
@@ -998,28 +998,6 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   opacity: 1;
   filter: none;
 }
-
-/* After the dock sequence settles, slide up out of view until a finger is down.
-   Both directions animate — the docked rest rule's transition: none must not win. */
-.top-symbol-bar.is-phase-docked.is-dock-autohide,
-.top-symbol-bar.is-phase-docked.is-dock-autohide.is-dock-peek {
-  transition:
-    transform 420ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 320ms ease !important;
-}
-
-.top-symbol-bar.is-phase-docked.is-dock-peek {
-  transform: translateX(-50%) translateY(calc(-100% - 18px)) scale(1) !important;
-  opacity: 0;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .top-symbol-bar.is-phase-docked.is-dock-peek {
-    transition: none !important;
-  }
-}
-
 
 /* After dock: cascade right→left into grayscale on the ICON only.
    Slot plate stays solid black — never wash the circle fill. */
@@ -1515,38 +1493,6 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   /* No gold completion ring on the top bar plate. */
   border-color: transparent;
   box-shadow: 0 10px 24px rgb(0 0 0 / 25%);
-}
-
-.mobile-reset.is-symbols-complete:not(:disabled) {
-  border-color: oklch(0.898 0.124 88.45 / 0.85);
-  box-shadow: 0 0 0 2px oklch(0.898 0.124 88.45 / 0.35);
-  animation: autoScratchReady 1.1s ease-in-out infinite;
-}
-
-.mobile-reset.is-symbols-complete.is-active {
-  animation: autoScratchActive 0.85s ease-in-out infinite;
-}
-
-@keyframes autoScratchReady {
-  0%,
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 2px oklch(0.898 0.124 88.45 / 0.35);
-  }
-  50% {
-    transform: scale(1.06);
-    box-shadow: 0 0 0 4px oklch(0.898 0.124 88.45 / 0.55);
-  }
-}
-
-@keyframes autoScratchActive {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.72;
-  }
 }
 
 .auto-scratch-hint {

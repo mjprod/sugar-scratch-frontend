@@ -731,7 +731,6 @@ body[data-theme="v8"] .mc-continue-title {
  */
 body[data-theme="v8"] .mc-continue-panel > .mc-continue-head .mc-continue-expand {
   position: absolute;
-  top: var(--space-4);
   right: var(--space-4);
   z-index: 2;
   display: grid;

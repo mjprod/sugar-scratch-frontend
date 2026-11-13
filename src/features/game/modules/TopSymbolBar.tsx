@@ -21,10 +21,7 @@ import {
 } from "./matchFlightPath";
 import { SYMBOL_TYPES, TOP_SYMBOL_COUNT } from "./matchGame";
 import { noteScratchSoundActivity, stopScratchSounds } from "./scratchSound";
-import {
-  getScratchZoomEnabled,
-  type ScratchZoomMode,
-} from "@/services/scratchZoomPref";
+import { type ScratchZoomMode } from "@/services/scratchZoomPref";
 
 const BRUSH_RADIUS_CSS = 12;
 const SLOT_REVEAL_THRESHOLD = 0.55;
@@ -64,7 +61,6 @@ function dockedBarWidth(from: HTMLElement): number {
   return width;
 }
 /** Last dormant cascade delay (200ms) + 520ms fade, then a beat before hide. */
-const DOCK_SETTLE_MS = 200 + 520 + 280;
 
 function foilCanvasDpr(): number {
   if (typeof window === "undefined") return 1;
@@ -156,11 +152,11 @@ type TopSymbolBarProps = {
   quietDecorativeLottie?: boolean;
   /** First stroke on the center foil pad (icon revealer). */
   onScratchStart?: () => void;
-  /** Docked bar has slid off-screen (finger-down brings it back). */
+  /** Kept for call-site compat; dock no longer autohides. */
   onDockHiddenChange?: (hidden: boolean) => void;
-  /** After lift, wait this long so zoom-out can finish before AutoScratch drops in. */
+  /** Kept for call-site compat; unused after dock autohide removal. */
   holdAfterPointerMs?: number;
-  /** Which scratch zoom pref gates the post-lift dock hold. */
+  /** Kept for call-site compat; unused after dock autohide removal. */
   zoomMode?: ScratchZoomMode;
 };
 
@@ -405,7 +401,7 @@ export function TopSymbolBar({
   forceRevealed = false,
   matchedSlots,
   shakingSlots,
-  matchInFlight = false,
+  matchInFlight: _matchInFlight = false,
   shakeDelayMs,
   slotElsOutRef,
   freezeSymbols = false,
@@ -413,9 +409,12 @@ export function TopSymbolBar({
   quietDecorativeLottie = false,
   onScratchStart,
   onDockHiddenChange,
-  holdAfterPointerMs = 0,
-  zoomMode = "motion",
+  holdAfterPointerMs: _holdAfterPointerMs = 0,
+  zoomMode: _zoomMode = "motion",
 }: TopSymbolBarProps) {
+  void _holdAfterPointerMs;
+  void _zoomMode;
+  void _matchInFlight;
   const barRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<CoatingCanvas | null>(null);
   const particleCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -458,15 +457,6 @@ export function TopSymbolBar({
   const [dockExiting, setDockExiting] = useState(false);
   /** One-shot "Scratch" text, started just before the dock climb. */
   const [scratchTextPlay, setScratchTextPlay] = useState(false);
-  /** After the dock sequence settles, slide the bar up until a finger is down. */
-  const [dockPeek, setDockPeek] = useState(false);
-  /** Armed once the first hide starts, so the return slides instead of snapping. */
-  const [dockAutohide, setDockAutohide] = useState(false);
-  const dockPeekRef = useRef(false);
-  dockPeekRef.current = dockPeek;
-  const matchInFlightRef = useRef(matchInFlight);
-  matchInFlightRef.current = matchInFlight;
-  const wasMatchInFlightRef = useRef(matchInFlight);
   const onDockHiddenChangeRef = useRef(onDockHiddenChange);
   onDockHiddenChangeRef.current = onDockHiddenChange;
   const prevPhaseRef = useRef<TopBarPhase>(phase);
@@ -872,7 +862,7 @@ export function TopSymbolBar({
     }
 
     if (phase === "docked" && prevPhaseRef.current === "docked") {
-      // Settled docked; peek/hide is handled below.
+      // Settled docked.
       return;
     }
 
@@ -893,79 +883,10 @@ export function TopSymbolBar({
     setStageEl(stage instanceof HTMLElement ? stage : null);
   }, [phase, showCoating, roundKey]);
 
-  // After the dock fly + grayscale cascade settle, slide the bar up out of view.
-  // A finger on the screen brings it back; lifting hides it again. A symbol
-  // still flying home holds the dock until it lands.
+  // Dock stays on screen after landing — no touch-to-peek autohide.
   useEffect(() => {
-    if (phase !== "docked" || dockExiting) {
-      setDockPeek(false);
-      setDockAutohide(false);
-      return;
-    }
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let hideTimer = 0;
-    // Last symbol just landed on a dock we were holding — slide it now,
-    // don't wait out another foil-settle.
-    const landedWhileHeld =
-      wasMatchInFlightRef.current && !matchInFlight && !dockPeekRef.current;
-    wasMatchInFlightRef.current = matchInFlight;
-
-    const hideDock = () => {
-      if (matchInFlightRef.current && !dockPeekRef.current) return;
-      setDockAutohide(true);
-      setDockPeek(true);
-    };
-    const armHide = (delay: number) => {
-      window.clearTimeout(hideTimer);
-      // A symbol still climbing into a visible dock has to land first.
-      // Once the dock is already up, later matches don't pull it back.
-      if (matchInFlightRef.current && !dockPeekRef.current) return;
-      hideTimer = window.setTimeout(hideDock, delay);
-    };
-    const show = () => {
-      window.clearTimeout(hideTimer);
-      setDockPeek(false);
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      if (event.pointerType === "mouse" && event.button !== 0) return;
-      const target = event.target;
-      if (
-        target instanceof Element &&
-        target.closest(".stage-game__auto-scratch")
-      ) {
-        return;
-      }
-      show();
-    };
-    const onPointerEnd = () => {
-      if (dockPeekRef.current) return;
-      const zoomHold =
-        getScratchZoomEnabled(zoomMode) && holdAfterPointerMs > 0
-          ? holdAfterPointerMs
-          : 0;
-      armHide(Math.max(DOCK_SETTLE_MS, zoomHold));
-    };
-
-    armHide(landedWhileHeld ? 0 : DOCK_SETTLE_MS);
-    window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("pointerup", onPointerEnd, true);
-    window.addEventListener("pointercancel", onPointerEnd, true);
-    return () => {
-      window.clearTimeout(hideTimer);
-      window.removeEventListener("pointerdown", onPointerDown, true);
-      window.removeEventListener("pointerup", onPointerEnd, true);
-      window.removeEventListener("pointercancel", onPointerEnd, true);
-      onDockHiddenChangeRef.current?.(false);
-    };
-  }, [phase, dockExiting, roundKey, matchInFlight, holdAfterPointerMs, zoomMode]);
-
-  // AutoScratch fills the slot as soon as the dock leaves. A returning dock
-  // hides it again.
-  useEffect(() => {
-    const hidden = phase === "docked" && !dockExiting && dockPeek;
-    onDockHiddenChangeRef.current?.(hidden);
-  }, [phase, dockExiting, dockPeek]);
+    onDockHiddenChangeRef.current?.(false);
+  }, [phase, dockExiting, roundKey]);
 
   useEffect(() => {
     return () => {
@@ -1346,8 +1267,6 @@ export function TopSymbolBar({
         clearedBurst && !dockExiting ? " is-cleared" : ""
       }${forceRevealed ? " is-force-revealed" : ""}${
         dockExiting ? " is-dock-exiting" : ""
-      }${dockAutohide && visualPhase === "docked" ? " is-dock-autohide" : ""}${
-        dockPeek && visualPhase === "docked" ? " is-dock-peek" : ""
       }`}
       aria-label="Match symbols — scratch to reveal"
       onPointerDown={onPointerDown}

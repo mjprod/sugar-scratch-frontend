@@ -17,6 +17,7 @@ import { ChunkErrorBoundary } from "@/components/ui/ChunkErrorBoundary";
 const Aurora = lazy(() => import("./Aurora"));
 import "./CtaButton.css";
 import "@/components/creator/mcp-photo-play-cta-css.css";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import { resolveCssCtaTone, type CssCtaTone } from "./ctaCssTone";
 
 function subscribeReducedMotion(onStoreChange: () => void) {
@@ -282,6 +283,7 @@ export function CtaButton({
     glowOuterBloom,
     isMobileViewport,
   );
+  const gradWrapRef = useMcpCtaGradMotion(useCssPlate && !disabled);
 
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [measured, setMeasured] = useState({
@@ -380,6 +382,7 @@ export function CtaButton({
 
     return (
       <div
+        ref={gradWrapRef}
         className={[
           "mcp-photo-play-cta-css-wrap",
           "mcp-photo-play-cta-css-wrap--cta",

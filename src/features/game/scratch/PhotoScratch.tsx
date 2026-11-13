@@ -35,11 +35,11 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
+import { AutoScratchHudIcon } from "../AutoScratchHudIcon";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { formatBalance } from "@/lib/formatBalance";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import {
@@ -3812,16 +3812,33 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ) : null}
               </div>
               <div className="stage-game__top-chrome-side is-end">
-                {topBarPhase === "docked" ? (
-                  <div className="stage-game__diamond-enter">
-                    <CurrencyBalances
-                      coins={coins}
-                      diamonds={diamonds}
-                      compact
-                      diamondsOnly
-                    />
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  className={[
+                    "stage-game__auto-scratch-a",
+                    topBarPhase !== "docked" ? "is-waiting" : "",
+                    autoScratch.enabled ? "is-active" : "",
+                    symbolsHuntComplete ? "is-symbols-complete" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  disabled={autoScratchLocked || topBarPhase !== "docked"}
+                  aria-label={
+                    topBarPhase !== "docked"
+                      ? "Auto scratch unlocks when the symbol dock reaches the top"
+                      : autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                  }
+                  aria-pressed={autoScratch.enabled}
+                  onClick={() =>
+                    updateAutoScratch({ enabled: !autoScratch.enabled })
+                  }
+                >
+                  <AutoScratchHudIcon />
+                </button>
               </div>
             </div>
             <div className="stage-game__top-chrome-row is-status">

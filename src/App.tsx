@@ -6,6 +6,7 @@ import { WalletProvider } from "@/contexts/WalletContext";
 import { MemoryTransitionProvider } from "@/components/memory/MemoryTransition";
 import { SitePreloader } from "@/components/SitePreloader";
 import { MotionProvider } from "@/features/collection/context/MotionContext";
+import { McpCtaGradMotionRoot } from "@/components/creator/useMcpCtaGradMotion";
 import { loadMotionFeatures } from "@/lib/loadMotionFeatures";
 import { AppRoutes } from "@/routes/AppRoutes";
 import { RouteErrorBoundary } from "@/routes/RouteChunkFallback";
@@ -21,6 +22,7 @@ export default function App() {
               <PageReadyProvider>
                 <MemoryTransitionProvider>
                   <MotionProvider>
+                    <McpCtaGradMotionRoot />
                     <RouteErrorBoundary>
                       <AppRoutes />
                     </RouteErrorBoundary>

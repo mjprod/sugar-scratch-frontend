@@ -21,6 +21,7 @@ import {
   shouldArmClaimExitFallback,
   type ClaimUiPhase,
 } from "./playerWelcomeClaimPhase";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import "@/components/creator/mcp-photo-play-cta-css.css";
 
 const MOBILE_CTA_QUERY = "(max-width: 980px)";
@@ -74,6 +75,7 @@ export function PlayerWelcomeBar({
       ? window.matchMedia(MOBILE_CTA_QUERY).matches
       : false,
   );
+  const claimGradWrapRef = useMcpCtaGradMotion(cssClaimCta);
   const exitDoneRef = useRef(false);
   const uiPhaseRef = useRef<ClaimUiPhase>(uiPhase);
   uiPhaseRef.current = uiPhase;
@@ -250,7 +252,10 @@ export function PlayerWelcomeBar({
                 .join(" ")}
             >
               {cssClaimCta ? (
-                <div className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--gold">
+                <div
+                  ref={claimGradWrapRef}
+                  className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--gold"
+                >
                   <button
                     type="button"
                     className="mcp-photo-play-cta-css mcp-photo-play-cta-css--claim mcp-photo-play-cta-css--gold"

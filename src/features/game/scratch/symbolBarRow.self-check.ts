@@ -10,10 +10,10 @@ function assert(cond: unknown, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
-const BUTTON = 40;
+const BUTTON = 48;
 const FRAME_INSET_PHONE = 6;
 const FRAME_INSET_DESKTOP = 4;
-const PAST_GOLD = 28;
+const PAST_GOLD = 18;
 const HUD_EDGE_PHONE = FRAME_INSET_PHONE + PAST_GOLD;
 const HUD_EDGE_DESKTOP = FRAME_INSET_DESKTOP + PAST_GOLD;
 const DOCK_CLEAR = 4;
@@ -55,8 +55,8 @@ function assertClearsButtons(stageW: number, hudEdge: number, label: string) {
   );
 }
 
-assert(reserved(HUD_EDGE_PHONE) === 187, `phone reserved is ${reserved(HUD_EDGE_PHONE)}, expected 187`);
-assert(reserved(HUD_EDGE_DESKTOP) === 183, `desktop reserved is ${reserved(HUD_EDGE_DESKTOP)}, expected 183`);
+assert(reserved(HUD_EDGE_PHONE) === 183, `phone reserved is ${reserved(HUD_EDGE_PHONE)}, expected 183`);
+assert(reserved(HUD_EDGE_DESKTOP) === 179, `desktop reserved is ${reserved(HUD_EDGE_DESKTOP)}, expected 179`);
 
 // Phones: iPhone SE 375, 16e 390, 17 402, S25 Ultra 412, plus cramped 360.
 for (const w of [360, 375, 390, 402, 412, 430]) {
@@ -68,8 +68,7 @@ for (const w of [374, 398, 430]) {
   assertClearsButtons(w, HUD_EDGE_DESKTOP, `desktop ${w}`);
 }
 
-// Full-size 40px slots need a 427px stage at phone insets — only the 430
-// desktop shell gets there. 390 phones must shrink.
+// With a tighter HUD edge, 430 desktop keeps full slots; 390 phones still shrink.
 assert(slotAt(390, HUD_EDGE_PHONE) < MAX_SLOT, "390px phone should shrink slots so the dock clears pause/diamond");
 assert(slotAt(430, HUD_EDGE_DESKTOP) === MAX_SLOT, "430px desktop shell should keep 40px slots");
 

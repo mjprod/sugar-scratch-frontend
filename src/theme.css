@@ -9214,33 +9214,36 @@ body[data-theme="v8"] .coverflow-status-pager__pill::before {
   border-radius: inherit;
 }
 
-body[data-theme="v8"] .coverflow-status-pager__pill-face {
-  position: relative;
-  z-index: 1;
+/* Same orbit rim + mesh plate as pink CSS CTAs, sized to the status pill. */
+body[data-theme="v8"] .coverflow-status-pager__pill-rim.mcp-photo-play-cta-css-wrap {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: none;
+  padding: 1px;
   border-radius: 999px;
-  border: 1px solid rgba(215, 0, 101, 0.18);
-  background-color: #c4005c;
-  background-image: linear-gradient(
-    180deg,
-    #ff2189 0%,
-    #970047 100%
-  );
-  box-shadow:
-    inset -0.5px 0.75px 0 rgba(255, 255, 255, 0.1),
-    inset 1.5px -2.5px 0 -2px rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+  pointer-events: none;
   /* Keep a stable compositor layer so iOS doesn't drop the fill mid-swipe. */
   transform: translateZ(0);
+}
+
+body[data-theme="v8"] .coverflow-status-pager__pill-face.mcp-photo-play-cta-css {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 999px;
   pointer-events: none;
+  cursor: inherit;
 }
 
 body[data-theme="v8"] .coverflow-status-pager__pill.is-held {
   cursor: grabbing;
 }
 
-body[data-theme="v8"] .coverflow-status-pager__pill.is-held .coverflow-status-pager__pill-face {
+body[data-theme="v8"] .coverflow-status-pager__pill.is-held .coverflow-status-pager__pill-rim {
   filter: brightness(1.08);
   transform: translateZ(0) scale(1.04);
 }

@@ -33,6 +33,7 @@ import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
 import "@/features/packs/packs-entry.css";
 import "@/components/creator/mcp-photo-play-cta-css.css";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import "./MobileCssCarousel.css";
 
 const MOBILE_CTA_QUERY = "(max-width: 980px)";
@@ -157,6 +158,7 @@ function PackSlideHud({
       ? window.matchMedia(MOBILE_CTA_QUERY).matches
       : false,
   );
+  const gradWrapRef = useMcpCtaGradMotion(cssPlayCta);
   const motionIcon = 14; /* match --text-body Play Motion type */
 
   useEffect(() => {
@@ -221,7 +223,7 @@ function PackSlideHud({
                 .join(" ")}
             >
               {cssPlayCta ? (
-                <div className="mcp-photo-play-cta-css-wrap">
+                <div ref={gradWrapRef} className="mcp-photo-play-cta-css-wrap">
                   <button
                     type="button"
                     className="mcp-photo-play-cta-css mcp-photo-play-cta-css--motion coverflow-buy-pack-cta__button"
@@ -394,7 +396,10 @@ function PackSlideHud({
               ) : null}
             </div>
           ) : cssPlayCta ? (
-            <div className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--slider">
+            <div
+              ref={gradWrapRef}
+              className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--slider"
+            >
               <button
                 type="button"
                 className="mcp-photo-play-cta-css mcp-photo-play-cta-css--slider coverflow-buy-pack-cta__button"
@@ -535,6 +540,7 @@ function CompactPlayButton({
       ? window.matchMedia(MOBILE_CTA_QUERY).matches
       : false,
   );
+  const gradWrapRef = useMcpCtaGradMotion(cssCta);
 
   useEffect(() => {
     const media = window.matchMedia(MOBILE_CTA_QUERY);
@@ -555,7 +561,7 @@ function CompactPlayButton({
         .join(" ")}
     >
       {cssCta ? (
-        <div className="mcp-photo-play-cta-css-wrap">
+        <div ref={gradWrapRef} className="mcp-photo-play-cta-css-wrap">
           <button
             type="button"
             className="mcp-photo-play-cta-css mcp-photo-play-cta-css--play-only"
@@ -1223,6 +1229,15 @@ export function MobileCssCarousel({
       window.removeEventListener("resize", onResize);
     };
   }, [layoutFocus, fitStageName]);
+
+  // Free Play toggle adds/removes the pack ring without a slide change —
+  // re-inset the live focus so video doesn't cover the stroke (or leave a gap).
+  const activeOwnedFreePlay = Boolean(
+    items[activeIndex] && ownedFreePlayIds?.has(items[activeIndex].id),
+  );
+  useLayoutEffect(() => {
+    layoutFocus();
+  }, [activeOwnedFreePlay, layoutFocus]);
 
   useEffect(() => {
     if (compact) return;
