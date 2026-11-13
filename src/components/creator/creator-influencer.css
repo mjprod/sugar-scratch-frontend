@@ -531,6 +531,23 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel-stage.is-flat
   width: 100%;
 }
 
+/* Center chevrons on the flat card band (below charcoal / name pad). */
+body[data-theme="v8"] .cpv2-profile-coverflow .mc-popular-arrow {
+  top: calc(8rem - 0.95rem + 162px);
+  left: auto;
+  right: auto;
+  z-index: 8;
+  transform: translateY(-50%);
+}
+
+body[data-theme="v8"] .cpv2-profile-coverflow .mc-popular-arrow.is-prev {
+  left: 4px;
+}
+
+body[data-theme="v8"] .cpv2-profile-coverflow .mc-popular-arrow.is-next {
+  right: 4px;
+}
+
 /*
  * Padding (not margin) so the swiper box includes the head zone — charcoal
  * inside the scrollport can sit behind cards and still peek above them.

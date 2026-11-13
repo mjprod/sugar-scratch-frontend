@@ -34,9 +34,20 @@ import "@/features/packs/packs.css";
 import "@/features/packs/packs-entry.css";
 import "@/components/creator/mcp-photo-play-cta-css.css";
 import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
+import { useMotionOptional } from "@/features/collection/hooks/useMotion";
 import "./MobileCssCarousel.css";
 
 const MOBILE_CTA_QUERY = "(max-width: 980px)";
+/** Match user ask / CoverFlow feel — yaw only on active pack art + live video. */
+const PACK_TILT_MAX_YAW_DEG = 25;
+/** Lower = more sensitive (smaller phone tilt → full yaw). Was 42 → 28. */
+const PACK_TILT_GAMMA_RANGE = 16;
+const PACK_TILT_LERP = 0.05;
+/** Influencer stage backdrop — yaw → X, pitch → Y. */
+const BACKDROP_TILT_MAX_X_PX = 36;
+const BACKDROP_TILT_MAX_Y_PX = 28;
+const BACKDROP_TILT_GAMMA_RANGE = 28;
+const BACKDROP_TILT_BETA_RANGE = 36;
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
   width: 159,
@@ -960,12 +971,77 @@ export function MobileCssCarousel({
     stageRef.current?.classList.toggle("is-live-video", live);
   }, []);
 
+  const setPackTiltYaw = useCallback((deg: number) => {
+    stageRef.current?.style.setProperty(
+      "--mobile-pack-tilt-yaw",
+      `${deg.toFixed(2)}deg`,
+    );
+  }, []);
+
+  const setBackdropTilt = useCallback((xPx: number, yPx: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.style.setProperty("--influencer-backdrop-tilt-x", `${xPx.toFixed(2)}px`);
+    stage.style.setProperty("--influencer-backdrop-tilt-y", `${yPx.toFixed(2)}px`);
+  }, []);
+
   const setParked = useCallback((next: boolean) => {
     parkedRef.current = next;
     focusRef.current?.classList.toggle("is-parked", next);
+    if (next) setPackTiltYaw(0);
     if (!compact) setHudActive(!next);
     syncLiveClass();
-  }, [compact, syncLiveClass]);
+  }, [compact, setPackTiltYaw, syncLiveClass]);
+
+  // Profile tilt → pack yaw + influencer backdrop X/Y (Buy Pack HUD stays flat).
+  const motion = useMotionOptional();
+  const packTiltOn = Boolean(
+    motion?.enabled && motion.permission === "granted",
+  );
+  useEffect(() => {
+    if (
+      !packTiltOn ||
+      !motion ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setPackTiltYaw(0);
+      setBackdropTilt(0, 0);
+      return;
+    }
+    let yaw = 0;
+    let backdropX = 0;
+    let backdropY = 0;
+    return motion.subscribe((sample) => {
+      if (!sample.hasSample) return;
+
+      const yawNorm = Math.max(
+        -1,
+        Math.min(1, sample.gamma / BACKDROP_TILT_GAMMA_RANGE),
+      );
+      const pitchNorm = Math.max(
+        -1,
+        Math.min(1, (sample.beta - 55) / BACKDROP_TILT_BETA_RANGE),
+      );
+      backdropX += (-yawNorm * BACKDROP_TILT_MAX_X_PX - backdropX) * PACK_TILT_LERP;
+      backdropY += (-pitchNorm * BACKDROP_TILT_MAX_Y_PX - backdropY) * PACK_TILT_LERP;
+      setBackdropTilt(backdropX, backdropY);
+
+      if (parkedRef.current) {
+        if (yaw !== 0) {
+          yaw = 0;
+          setPackTiltYaw(0);
+        }
+        return;
+      }
+      const packNorm = Math.max(
+        -1,
+        Math.min(1, sample.gamma / PACK_TILT_GAMMA_RANGE),
+      );
+      const target = -packNorm * PACK_TILT_MAX_YAW_DEG;
+      yaw += (target - yaw) * PACK_TILT_LERP;
+      setPackTiltYaw(yaw);
+    });
+  }, [motion, packTiltOn, setBackdropTilt, setPackTiltYaw]);
 
   const layoutFocus = useCallback(() => {
     const shell = shellRef.current;
@@ -1390,7 +1466,7 @@ export function MobileCssCarousel({
         influencerBackdrop ? " has-influencer-backdrop" : ""
       }${compact ? " is-compact" : ""}${flat ? " is-flat" : ""}${
         compact && items.length === 1 ? " is-single" : ""
-      }`}
+      }${packTiltOn ? " is-motion-tilt" : ""}`}
     >
       {compact || flat ? null : influencerBackdrop ? (
         <div className="packs-influencer-backdrop" aria-hidden="true">
@@ -1413,12 +1489,14 @@ export function MobileCssCarousel({
         className="mobile-css-carousel-shell"
         onPointerUp={handleShellPointerUp}
       >
-        {compact && items.length > 1 ? (
+        {(compact || flat) && items.length > 1 ? (
           <>
             <button
               type="button"
               className="mc-popular-arrow is-prev"
-              aria-label="Previous packs"
+              aria-label={
+                slideCta === "view" ? "Previous themes" : "Previous packs"
+              }
               disabled={activeIndex <= 0}
               {...bindArrowHold(holdPrev)}
             >
@@ -1427,7 +1505,7 @@ export function MobileCssCarousel({
             <button
               type="button"
               className="mc-popular-arrow is-next"
-              aria-label="Next packs"
+              aria-label={slideCta === "view" ? "Next themes" : "Next packs"}
               disabled={activeIndex >= items.length - 1}
               {...bindArrowHold(holdNext)}
             >

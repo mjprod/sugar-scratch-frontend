@@ -1,10 +1,22 @@
 /* Same stage + bottom glow pose as 3D packs; carousel chrome sits above circles. */
 .mobile-css-carousel-stage.stage-packs {
+  --mobile-pack-tilt-yaw: 0deg;
   display: flex;
   align-items: center;
   justify-content: center;
   /* Circles sit near the bottom edge; allow bloom to paint past the stage. */
   overflow: visible;
+}
+
+/* Coverflow Buy Pack — slightly smaller than the lab/default 159×60 plate. */
+.mobile-css-carousel-stage .mcp-photo-play-cta-css-wrap--slider {
+  transform: translateY(-6px) scale(0.95);
+  transform-origin: center center;
+}
+
+/* Device tilt on — 10% off original size + lift so the tilted pack reads clearer. */
+.mobile-css-carousel-stage.is-motion-tilt .mcp-photo-play-cta-css-wrap--slider {
+  transform: translateY(-10px) scale(0.9);
 }
 
 /* Half the last pass — readable without overpowering the packs. */
@@ -69,6 +81,7 @@
   height: 100%;
   overflow: hidden;
   background: #111;
+  perspective: 900px;
 }
 
 /* Poster is the cheap base layer. Live video sits in the 2D overlay, not here. */
@@ -86,9 +99,15 @@
   pointer-events: none;
 }
 
+/* Device tilt yaw — active pack poster only (side slides stay coverflow-flat). */
+.mobile-css-carousel .swiper-slide-active .mobile-css-carousel__poster {
+  transform: rotate3d(0, 1, 0, var(--mobile-pack-tilt-yaw, 0deg));
+  transform-origin: center center;
+}
+
 /*
- * One untransformed <video> over the focused pack. Must stay outside Swiper's
- * 3D coverflow tree — a 3D ancestor forces iOS off the overlay decoder plane.
+ * Live <video> stays outside Swiper's 3D coverflow tree (iOS decoder).
+ * Tilt the video node itself — not a 3D ancestor wrapping it.
  */
 .mobile-css-carousel__focus {
   position: absolute;
@@ -96,6 +115,7 @@
   /* Visible so Buy confirm can paint past the pack; video is sized to the box. */
   overflow: visible;
   pointer-events: none;
+  perspective: 900px;
 }
 
 /* Park hides the live video only — Buy Pack HUD has to stay in the tree so
@@ -133,6 +153,15 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  transform: rotate3d(0, 1, 0, var(--mobile-pack-tilt-yaw, 0deg));
+  transform-origin: center center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-css-carousel .swiper-slide-active .mobile-css-carousel__poster,
+  .mobile-css-carousel__video {
+    transform: none;
+  }
 }
 
 .mobile-css-carousel__focus.is-ready .mobile-css-carousel__video {
@@ -388,29 +417,34 @@
   justify-content: center;
 }
 
-.mobile-css-carousel-stage.is-compact .mc-popular-arrow {
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow,
+.mobile-css-carousel-stage.is-flat .mc-popular-arrow {
   top: 50%;
   z-index: 8;
   transform: translateY(-50%);
 }
 
 @media (max-width: 820px) {
-  .mobile-css-carousel-stage.is-compact .mc-popular-arrow {
+  .mobile-css-carousel-stage.is-compact .mc-popular-arrow,
+  .mobile-css-carousel-stage.is-flat .mc-popular-arrow {
     width: 84px;
     height: 84px;
   }
 
-  .mobile-css-carousel-stage.is-compact .mc-popular-arrow svg {
+  .mobile-css-carousel-stage.is-compact .mc-popular-arrow svg,
+  .mobile-css-carousel-stage.is-flat .mc-popular-arrow svg {
     width: 36px;
     height: 36px;
   }
 }
 
-.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-prev {
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-prev,
+.mobile-css-carousel-stage.is-flat .mc-popular-arrow.is-prev {
   left: -6px;
 }
 
-.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-next {
+.mobile-css-carousel-stage.is-compact .mc-popular-arrow.is-next,
+.mobile-css-carousel-stage.is-flat .mc-popular-arrow.is-next {
   right: -6px;
 }
 

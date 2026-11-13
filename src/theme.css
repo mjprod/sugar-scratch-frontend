@@ -8012,6 +8012,22 @@ body[data-theme="v8"] .packs-influencer-backdrop__img {
   object-fit: cover;
   object-position: center 28%;
   filter: blur(0.5px) saturate(1.05);
+  /* Scale so ±tilt travel doesn't flash empty edges. */
+  transform: translate3d(
+      var(--influencer-backdrop-tilt-x, 0px),
+      var(--influencer-backdrop-tilt-y, 0px),
+      0
+    )
+    scale(1.14);
+  transform-origin: center 28%;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-theme="v8"] .packs-influencer-backdrop__img {
+    transform: none;
+    will-change: auto;
+  }
 }
 
 body[data-theme="v8"] .packs-influencer-backdrop__scrim {
