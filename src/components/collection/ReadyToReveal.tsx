@@ -356,37 +356,39 @@ function ContinueSection({
           .join(" ")}
         data-open={open ? "true" : "false"}
       >
-        <div className="mc-continue-head">
-          <button
-            type="button"
-            id="ready-heading"
-            className="mc-continue-title"
-            aria-expanded={open}
-            aria-controls="mc-continue-body"
-            onClick={() => setExpanded(!open)}
-          >
-            Continue playing
-          </button>
-          <button
-            type="button"
-            className="mc-continue-expand"
-            aria-expanded={open}
-            aria-controls="mc-continue-body"
-            aria-label={
-              open ? "Collapse continue playing" : "Expand continue playing"
-            }
-            onClick={() => setExpanded(!open)}
-          >
-            <span
-              key={`${chevronPlayId}-${open ? "open" : "closed"}`}
-              className="cpv2-profile-expand-chevron"
-              data-open={open ? "true" : "false"}
-              data-chevron-anim={chevronAnimReady ? "true" : "false"}
-              aria-hidden="true"
+        <div className="mc-continue-head-pad">
+          <div className="mc-continue-head">
+            <button
+              type="button"
+              id="ready-heading"
+              className="mc-continue-title"
+              aria-expanded={open}
+              aria-controls="mc-continue-body"
+              onClick={() => setExpanded(!open)}
             >
-              <ChevronDown className="size-5" strokeWidth={2.2} />
-            </span>
-          </button>
+              Continue playing
+            </button>
+            <button
+              type="button"
+              className="mc-continue-expand"
+              aria-expanded={open}
+              aria-controls="mc-continue-body"
+              aria-label={
+                open ? "Collapse continue playing" : "Expand continue playing"
+              }
+              onClick={() => setExpanded(!open)}
+            >
+              <span
+                key={`${chevronPlayId}-${open ? "open" : "closed"}`}
+                className="cpv2-profile-expand-chevron"
+                data-open={open ? "true" : "false"}
+                data-chevron-anim={chevronAnimReady ? "true" : "false"}
+                aria-hidden="true"
+              >
+                <ChevronDown className="size-5" strokeWidth={2.2} />
+              </span>
+            </button>
+          </div>
         </div>
         <div id="mc-continue-body" className="mc-continue-body">
           <div className="mc-continue-body-inner">

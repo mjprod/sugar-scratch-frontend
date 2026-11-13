@@ -500,6 +500,12 @@ body[data-theme="v8"] .cpv2-shell > .mc-continue {
   margin-bottom: var(--space-2);
 }
 
+body[data-theme="v8"] .cpv2-shell .mc-continue-carousel .mc-popular-arrow {
+  top: 50%;
+  z-index: 12;
+  transform: translateY(-50%);
+}
+
 body[data-theme="v8"] .cpv2-profile-coverflow {
   position: relative;
   z-index: 0;
@@ -533,10 +539,10 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel-stage.is-flat
 
 /* Center chevrons on the flat card band (below charcoal / name pad). */
 body[data-theme="v8"] .cpv2-profile-coverflow .mc-popular-arrow {
-  top: calc(8rem - 0.95rem + 162px);
+  top: calc(9rem - 3.2rem + 172px);
   left: auto;
   right: auto;
-  z-index: 8;
+  z-index: 12;
   transform: translateY(-50%);
 }
 
@@ -557,8 +563,8 @@ body[data-theme="v8"]
   .mobile-css-carousel-stage.is-flat
   .mobile-css-carousel.swiper {
   margin-top: 0;
-  padding-top: 8rem;
-  transform: translateY(-0.95rem);
+  padding-top: 9rem;
+  transform: translateY(-3.2rem);
 }
 
 body[data-theme="v8"]
@@ -574,7 +580,7 @@ body[data-theme="v8"]
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel .swiper-slide {
   width: 220px;
   max-width: 220px;
-  height: 324px;
+  height: 344px;
   aspect-ratio: auto;
   background: transparent;
 }
@@ -582,17 +588,17 @@ body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel .swiper-slide
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__pack {
   width: 100%;
   max-width: 220px;
-  height: 324px;
+  height: 344px;
   margin-left: 9px;
   border-radius: 1rem;
   border: 1px solid rgb(255 255 255 / 12%);
   background: linear-gradient(
     180deg,
-    rgb(0 0 0 / 59%) 0%,
+    rgb(0 0 0 / 25%) 0%,
     rgb(0 0 0) 100%
   );
-  -webkit-backdrop-filter: blur(6px);
-  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
   box-shadow:
     inset 5px 5px 1px -5px #ffffff4a,
     inset -5px -4px 1px -5px #ffffff7a;
@@ -658,13 +664,13 @@ body[data-theme="v8"]
 
 body[data-theme="v8"] .cpv2-profile-coverflow .mobile-css-carousel__poster {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
-  height: auto;
-  max-width: none;
-  max-height: none;
-  object-fit: cover;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  /* Fit whole shirt in the glass — cover was cropping the sides. */
+  object-fit: contain;
   object-position: top center;
 }
 
@@ -811,7 +817,8 @@ body[data-theme="v8"] .cpv2-profile-buy-pack {
   display: flex;
   justify-content: center;
   width: 80%;
-  margin: 0 auto var(--space-4);
+  /* Follow the track’s -3.2rem lift so the gap under the cards stays put. */
+  margin: -2.25rem auto var(--space-4);
   padding: 0;
   box-sizing: border-box;
 }

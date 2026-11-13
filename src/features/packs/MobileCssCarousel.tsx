@@ -35,6 +35,7 @@ import "@/features/packs/packs-entry.css";
 import "@/components/creator/mcp-photo-play-cta-css.css";
 import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
 import { useMotionOptional } from "@/features/collection/hooks/useMotion";
+import { shouldApplyFocusRect } from "@/features/packs/mobileCssCarouselFocusRect";
 import "./MobileCssCarousel.css";
 
 const MOBILE_CTA_QUERY = "(max-width: 980px)";
@@ -1053,6 +1054,8 @@ export function MobileCssCarousel({
     if (!pack) return;
     const shellRect = shell.getBoundingClientRect();
     const packRect = pack.getBoundingClientRect();
+    // Skip mid-swipe transform snapshots (iOS ~40px flash) — keep last good box.
+    if (!shouldApplyFocusRect(packRect.height, pack.offsetHeight)) return;
     // Owned free-play ring is on the pack — inset so live video does not cover it.
     const inset = pack.classList.contains("is-owned-free-play") ? 2 : 0;
     focus.style.left = `${packRect.left - shellRect.left + inset}px`;
@@ -1094,7 +1097,9 @@ export function MobileCssCarousel({
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     claimMediaDecoder(video, src);
-    if (video.readyState >= 2 && video.videoWidth > 1) {
+    const focusH = focus?.offsetHeight ?? 0;
+    // Keep hidden if layoutFocus skipped a mid-swipe tiny box (no size yet).
+    if (video.readyState >= 2 && video.videoWidth > 1 && focusH >= 80) {
       focus?.classList.add("is-ready");
     } else {
       focus?.classList.remove("is-ready");
@@ -1489,30 +1494,6 @@ export function MobileCssCarousel({
         className="mobile-css-carousel-shell"
         onPointerUp={handleShellPointerUp}
       >
-        {(compact || flat) && items.length > 1 ? (
-          <>
-            <button
-              type="button"
-              className="mc-popular-arrow is-prev"
-              aria-label={
-                slideCta === "view" ? "Previous themes" : "Previous packs"
-              }
-              disabled={activeIndex <= 0}
-              {...bindArrowHold(holdPrev)}
-            >
-              <ChevronLeft size={18} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="mc-popular-arrow is-next"
-              aria-label={slideCta === "view" ? "Next themes" : "Next packs"}
-              disabled={activeIndex >= items.length - 1}
-              {...bindArrowHold(holdNext)}
-            >
-              <ChevronRight size={18} aria-hidden />
-            </button>
-          </>
-        ) : null}
         {/* Fixed behind the track — does not scroll with slides. */}
         {flat && stageBackdropSrc ? (
           <picture
@@ -1571,8 +1552,9 @@ export function MobileCssCarousel({
           centeredSlides={!compact}
           slidesPerView="auto"
           spaceBetween={compact ? 18 : flat ? 16 : -72}
-          slidesOffsetBefore={compact && items.length > 1 ? 80 : 0}
-          slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
+          /* ~half (stage − slide) so ends clear the 84px chevrons and sit near center. */
+          slidesOffsetBefore={compact && items.length > 1 ? 116 : 0}
+          slidesOffsetAfter={compact && items.length > 1 ? 116 : 0}
           speed={720}
           resistanceRatio={0.85}
           watchSlidesProgress={useCoverflow || flat}
@@ -1636,7 +1618,16 @@ export function MobileCssCarousel({
           onTransitionEnd={() => {
             if (holdingRef.current) return;
             setParked(false);
+            // Second frame: iOS can still report a mid-coverflow rect on the
+            // first transitionEnd paint — layoutFocus ignores those, then
+            // this retry applies the settled pack box before is-ready.
+            layoutFocus();
             attachActiveVideo();
+            window.requestAnimationFrame(() => {
+              if (holdingRef.current || parkedRef.current) return;
+              layoutFocus();
+              attachActiveVideo();
+            });
           }}
           onTouchEnd={(swiper) => {
             if (holdingRef.current) return;
@@ -1648,6 +1639,7 @@ export function MobileCssCarousel({
                 return;
               }
               setParked(false);
+              layoutFocus();
               attachActiveVideo();
             });
           }}
@@ -1754,7 +1746,13 @@ export function MobileCssCarousel({
             aria-hidden
             onLoadedData={() => {
               if (parkedRef.current) return;
-              focusRef.current?.classList.add("is-ready");
+              layoutFocus();
+              const focus = focusRef.current;
+              // Don't reveal until the focus box is a real pack size (iOS).
+              if (focus && focus.offsetHeight > 0 && focus.offsetHeight < 80) {
+                return;
+              }
+              focus?.classList.add("is-ready");
               syncLiveClass();
               const swiper = swiperRef.current;
               if (swiper) markReady(swiper);
@@ -1790,6 +1788,31 @@ export function MobileCssCarousel({
             />
           ) : null}
         </div>
+        {/* After the track so chevrons paint above packs / live video. */}
+        {(compact || flat) && items.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="mc-popular-arrow is-prev"
+              aria-label={
+                slideCta === "view" ? "Previous themes" : "Previous packs"
+              }
+              disabled={activeIndex <= 0}
+              {...bindArrowHold(holdPrev)}
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="mc-popular-arrow is-next"
+              aria-label={slideCta === "view" ? "Next themes" : "Next packs"}
+              disabled={activeIndex >= items.length - 1}
+              {...bindArrowHold(holdNext)}
+            >
+              <ChevronRight size={18} aria-hidden />
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

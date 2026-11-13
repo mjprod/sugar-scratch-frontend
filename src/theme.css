@@ -9593,7 +9593,22 @@ body[data-theme="v8"] .mc-popular-arrow {
   touch-action: manipulation;
 }
 
-/* Coverflow / theme motion — match compact & flat chevron size on phone. */
+/* Stage chevrons — beat the 8px/z-index:2 defaults above; sit on the card band. */
+body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow {
+  top: 50%;
+  z-index: 12;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow.is-prev {
+  left: 4px;
+}
+
+body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow.is-next {
+  right: 4px;
+}
+
 @media (max-width: 820px) {
   body[data-theme="v8"] .mobile-css-carousel-stage .mc-popular-arrow {
     width: 84px;
@@ -9604,14 +9619,6 @@ body[data-theme="v8"] .mc-popular-arrow {
     width: 36px;
     height: 36px;
   }
-}
-
-body[data-theme="v8"] .mc-popular-arrow.is-prev {
-  left: -4px;
-}
-
-body[data-theme="v8"] .mc-popular-arrow.is-next {
-  right: -4px;
 }
 
 body[data-theme="v8"] .mc-popular-arrow:disabled {

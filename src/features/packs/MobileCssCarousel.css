@@ -84,6 +84,14 @@
   perspective: 900px;
 }
 
+/* Fill the pack — avoids in-flow intrinsic flashes before the img is absolute. */
+.mobile-css-carousel__poster-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+
 /* Poster is the cheap base layer. Live video sits in the 2D overlay, not here. */
 .mobile-css-carousel__poster {
   position: absolute;
@@ -295,7 +303,7 @@
 .mobile-css-carousel__stage-charcoal {
   position: absolute;
   inset: 0;
-  top: -1.875rem;
+  top: 0rem;
   z-index: 1;
   display: flex;
   align-items: center;
@@ -314,11 +322,11 @@
 .mobile-css-carousel__stage-charcoal img {
   display: block;
   width: auto;
-  height: 74%;
+  height: 79%;
   max-width: none;
   object-fit: contain;
-  object-position: center center;
-  transform: translateY(-10%);
+  object-position: top center;
+  transform: translateY(-13%);
   user-select: none;
   -webkit-user-select: none;
   pointer-events: none;
@@ -437,11 +445,11 @@
 }
 
 .mobile-css-carousel-stage .mc-popular-arrow.is-prev {
-  left: -6px;
+  left: 4px;
 }
 
 .mobile-css-carousel-stage .mc-popular-arrow.is-next {
-  right: -6px;
+  right: 4px;
 }
 
 .mobile-css-carousel-stage.is-compact .mobile-css-carousel .swiper-slide {
