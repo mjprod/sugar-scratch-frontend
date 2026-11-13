@@ -450,19 +450,10 @@ export function StoreScreen({
 function StoreSkeleton() {
   return (
     <div className="get-diamonds-stack" aria-busy="true" aria-label="Loading store">
-      <div className="get-diamonds-hero-band">
-        <div className="get-diamonds-hero get-diamonds-hero--band">
-          <div className="h-[72px] max-w-[280px] animate-pulse rounded-[10px] bg-white/[0.08]" />
-        </div>
-      </div>
       <div className="get-diamonds-packages">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-[200px] animate-pulse rounded-[14px] bg-white/[0.06]"
-          />
-        ))}
+        <div className="mx-auto h-[26rem] w-[min(72vw,17.5rem)] animate-pulse rounded-[22px] bg-white/[0.06]" />
       </div>
+      <div className="get-diamonds-hero-band get-diamonds-hero-band--art min-h-[18rem]" />
       <div className="get-diamonds-earn">
         <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />
         <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />

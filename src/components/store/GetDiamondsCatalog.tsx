@@ -12,6 +12,8 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { EffectCoverflow } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
 import { HistoryPageHeader } from "@/components/history/HistoryShared";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
@@ -21,12 +23,17 @@ import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import type { RedeemReward } from "@/services/redeem";
 import {
   COIN_EXCHANGE_OPTIONS,
+  COIN_PACK_FIXTURES,
   DAILY_AD_LIMIT,
   type StoreProduct,
 } from "@/services/store";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
 import "./GetDiamondsScreen.css";
 
 const STORE_SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+
+type CashCurrency = "diamonds" | "coins";
 
 const TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure payment" },
@@ -85,6 +92,7 @@ export function GetDiamondsCatalog({
   }) => void;
 }) {
   const { authed } = useAuth();
+  const [cashCurrency, setCashCurrency] = useState<CashCurrency>("diamonds");
   useEffect(() => {
     const sync = () => {
       document.documentElement.classList.toggle(
@@ -100,7 +108,11 @@ export function GetDiamondsCatalog({
     };
   }, []);
   const ads = products.filter((p) => p.kind === "rewarded-ad");
-  const packs = products.filter((p) => p.kind === "diamonds");
+  const diamondPacks = products.filter((p) => p.kind === "diamonds");
+  const liveCoinPacks = products.filter((p) => p.kind === "coins");
+  // shortcut: live API may lack coin SKUs; fixture packs keep the Coins tab usable.
+  const coinPacks = liveCoinPacks.length > 0 ? liveCoinPacks : COIN_PACK_FIXTURES;
+  const packs = cashCurrency === "coins" ? coinPacks : diamondPacks;
   const adProduct = ads[0] ?? null;
   const adRemaining = Math.max(0, DAILY_AD_LIMIT - adClaimsToday);
 
@@ -116,27 +128,29 @@ export function GetDiamondsCatalog({
 
   return (
     <div className="get-diamonds-stack">
-      <HistoryPageHeader title="Buy Diamonds" onBack={onBack} backLabel={backLabel} />
+      <HistoryPageHeader
+        title={cashCurrency === "coins" ? "Buy Coins" : "Buy Diamonds"}
+        onBack={onBack}
+        backLabel={backLabel}
+      />
       <div className="get-diamonds-ambient" aria-hidden="true">
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--a" />
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--b" />
         <span className="get-diamonds-ambient__sparkle" />
       </div>
-      <GetDiamondsHeroBand />
 
       <section aria-label="Buy with Cash">
-        <div className="get-diamonds-packages">
-          {packs.map((product) => (
-            <PackageCard
-              key={product.id}
-              product={product}
-              processing={isProcessing(product.id)}
-              disabled={busy}
-              onBuy={() => onSelect(product)}
-            />
-          ))}
-        </div>
+        <CashCurrencyToggle value={cashCurrency} onChange={setCashCurrency} />
+        <PackageCarousel
+          key={cashCurrency}
+          packs={packs}
+          busy={busy}
+          isProcessing={isProcessing}
+          onSelect={onSelect}
+        />
       </section>
+
+      <GetDiamondsHeroBand />
 
       <TrustRow />
 
@@ -179,6 +193,109 @@ export function GetDiamondsCatalog({
   );
 }
 
+function CashCurrencyToggle({
+  value,
+  onChange,
+}: {
+  value: CashCurrency;
+  onChange: (next: CashCurrency) => void;
+}) {
+  return (
+    <div
+      className="get-diamonds-currency-toggle"
+      role="tablist"
+      aria-label="Currency to buy"
+    >
+      <button
+        type="button"
+        role="tab"
+        className={[
+          "get-diamonds-currency-toggle__btn",
+          value === "diamonds" ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-selected={value === "diamonds"}
+        onClick={() => onChange("diamonds")}
+      >
+        <DiamondLottie size={16} aria-hidden />
+        Diamonds
+      </button>
+      <button
+        type="button"
+        role="tab"
+        className={[
+          "get-diamonds-currency-toggle__btn",
+          value === "coins" ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-selected={value === "coins"}
+        onClick={() => onChange("coins")}
+      >
+        <CoinLottie size={16} aria-hidden />
+        Coins
+      </button>
+    </div>
+  );
+}
+
+/** Same Swiper coverflow pose as homepage `MobileCssCarousel`. */
+function PackageCarousel({
+  packs,
+  busy,
+  isProcessing,
+  onSelect,
+}: {
+  packs: StoreProduct[];
+  busy: boolean;
+  isProcessing: (productId: string) => boolean;
+  onSelect: (product: StoreProduct) => void;
+}) {
+  if (packs.length === 0) return null;
+
+  return (
+    <div className="get-diamonds-packages">
+      <Swiper
+        className="get-diamonds-packages-swiper"
+        modules={[EffectCoverflow]}
+        effect="coverflow"
+        grabCursor
+        centeredSlides
+        slidesPerView="auto"
+        spaceBetween={-72}
+        speed={720}
+        resistanceRatio={0.85}
+        watchSlidesProgress
+        noSwipingSelector=".get-diamonds-package__buy, .cta-button, .mcp-photo-play-cta-css-wrap"
+        coverflowEffect={{
+          rotate: 38,
+          stretch: -88,
+          depth: 80,
+          scale: 0.9,
+          modifier: 1,
+          slideShadows: false,
+        }}
+        initialSlide={(() => {
+          const best = packs.findIndex((p) => p.badge === "Best Value");
+          return best >= 0 ? best : Math.floor(packs.length / 2);
+        })()}
+      >
+        {packs.map((product) => (
+          <SwiperSlide key={product.id} className="get-diamonds-packages-slide">
+            <PackageCard
+              product={product}
+              processing={isProcessing(product.id)}
+              disabled={busy}
+              onBuy={() => onSelect(product)}
+            />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </div>
+  );
+}
+
 function GetDiamondsHeroBand() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [motionLive, setMotionLive] = useState(true);
@@ -199,27 +316,14 @@ function GetDiamondsHeroBand() {
       ref={rootRef}
       className={[
         "get-diamonds-hero-band",
+        "get-diamonds-hero-band--art",
         motionLive ? "" : "is-paused",
       ]
         .filter(Boolean)
         .join(" ")}
+      aria-hidden="true"
     >
-      <header className="get-diamonds-hero get-diamonds-hero--band">
-        <div className="get-diamonds-hero__copy-block">
-          <h2 className="get-diamonds-hero__title">
-            Get Diamonds{" "}
-            <span className="get-diamonds-hero__accent" aria-hidden="true">
-              <DiamondLottie size="1em" />
-            </span>
-          </h2>
-          <p className="get-diamonds-hero__copy">
-            Diamonds are used to buy Motion Card Packs and unlock exclusive
-            rewards.
-          </p>
-        </div>
-      </header>
-      <span className="get-diamonds-hero-band__sheen" aria-hidden="true" />
-      <div className="get-diamonds-hero-band__glow-wrap" aria-hidden="true">
+      <div className="get-diamonds-hero-band__glow-wrap">
         <img
           className="get-diamonds-hero-band__glow"
           src="/images/store/glowCircle1x.webp"
@@ -228,7 +332,7 @@ function GetDiamondsHeroBand() {
           decoding="async"
         />
       </div>
-      <div className="get-diamonds-hero-band__float-wrap" aria-hidden="true">
+      <div className="get-diamonds-hero-band__float-wrap">
         <img
           className="get-diamonds-hero-band__float"
           src="/images/store/floatingDiamonds.webp"
@@ -242,7 +346,6 @@ function GetDiamondsHeroBand() {
         src="/images/store/diamondWoman1x.webp"
         srcSet="/images/store/diamondWoman1x.webp 1x, /images/store/diamondWoman2x.webp 2x"
         alt=""
-        fetchPriority="high"
         decoding="async"
       />
     </div>
@@ -276,6 +379,7 @@ function PackageCard({
   disabled: boolean;
   onBuy: () => void;
 }) {
+  const isCoins = product.kind === "coins";
   const featured = product.badge === "Best Value";
   const badgeClass =
     product.badge === "Popular"
@@ -286,69 +390,73 @@ function PackageCard({
           ? "is-bonus"
           : "";
   const bonus =
-    typeof product.bonusDiamonds === "number" && product.bonusDiamonds > 0
+    !isCoins &&
+    typeof product.bonusDiamonds === "number" &&
+    product.bonusDiamonds > 0
       ? product.bonusDiamonds
       : null;
+  const unit = isCoins ? "Coins" : "Diamonds";
+  const amountValue = isCoins ? (product.coins ?? 0) : product.diamonds;
+  const amount = amountValue.toLocaleString();
+  const Mark = isCoins ? CoinLottie : DiamondLottie;
 
   return (
     <article
-      className={["get-diamonds-package", featured ? "is-featured" : ""].join(
-        " ",
-      )}
+      className={[
+        "get-diamonds-package",
+        isCoins ? "is-coins" : "",
+        featured ? "is-featured" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       {product.badge ? (
         <span className={["get-diamonds-package__badge", badgeClass].join(" ")}>
           {product.badge}
         </span>
       ) : null}
+      <p className="get-diamonds-package__kicker">
+        <Mark size={18} aria-hidden />
+        {isCoins ? "Coin Pack" : "Diamond Pack"}
+      </p>
       <span className="get-diamonds-package__icon">
         {processing ? (
           <Loader2
-            className="size-6 animate-spin text-sky-200"
+            className="size-10 animate-spin text-sky-200"
             aria-hidden="true"
           />
         ) : (
-          <DiamondLottie size={40} aria-hidden />
+          <Mark size={72} aria-hidden />
         )}
       </span>
-      <p className="get-diamonds-package__amount">
-        {product.diamonds.toLocaleString()}
-      </p>
-      <p className="get-diamonds-package__label">Diamonds</p>
-      {bonus != null ? (
-        <p className="get-diamonds-package__bonus">
-          +{bonus.toLocaleString()} Bonus
+      <div className="get-diamonds-package__amount-box">
+        <span className="get-diamonds-package__amount-label">— Amount —</span>
+        <p className="get-diamonds-package__amount">
+          <Mark size={22} aria-hidden />
+          {amount}
         </p>
-      ) : null}
-      <p className="get-diamonds-package__price">{product.priceLabel}</p>
-      {featured ? (
-        <div className="get-diamonds-package__buy">
-          <CtaButton
-            {...STORE_SQUIRCLE_CTA}
-            fillParent
-            type="button"
-            label={processing ? "Processing…" : "Buy"}
-            costAmount={null}
-            cornerRadius={999}
-            strokeWidth={1}
-            disabled={disabled}
-            aria-busy={processing}
-            aria-label={`Buy ${product.diamonds} Diamonds`}
-            onClick={onBuy}
-          />
-        </div>
-      ) : (
-        <button
+        {bonus != null ? (
+          <p className="get-diamonds-package__bonus">
+            +{bonus.toLocaleString()} Bonus
+          </p>
+        ) : null}
+      </div>
+      <div className="get-diamonds-package__buy">
+        <CtaButton
+          forceCss
+          cssTone={isCoins ? "gold" : "purple"}
+          fillParent
           type="button"
-          className="get-diamonds-package__buy get-diamonds-package__buy--outline"
+          label={processing ? "Processing…" : product.priceLabel}
+          costAmount={null}
+          cornerRadius={999}
+          strokeWidth={1}
           disabled={disabled}
           aria-busy={processing}
-          aria-label={`Buy ${product.diamonds} Diamonds`}
+          aria-label={`Buy ${amount} ${unit} for ${product.priceLabel}`}
           onClick={onBuy}
-        >
-          {processing ? "Processing…" : "Buy"}
-        </button>
-      )}
+        />
+      </div>
     </article>
   );
 }

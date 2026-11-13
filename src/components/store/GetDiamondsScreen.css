@@ -1,18 +1,8 @@
 body[data-theme="v8"] .get-diamonds-page {
   position: relative;
   isolation: isolate;
-  background:
-    radial-gradient(
-      circle at 80% 10%,
-      rgba(120, 20, 160, 0.18),
-      transparent 34%
-    ),
-    radial-gradient(
-      circle at 12% 88%,
-      rgba(217, 30, 110, 0.1),
-      transparent 28%
-    ),
-    #07060b;
+  background: #010103;
+  overflow-x: clip;
 }
 
 body[data-theme="v8"] .get-diamonds-page::before {
@@ -33,10 +23,13 @@ body[data-theme="v8"] .get-diamonds-page .app-page-shell-inner,
 body[data-theme="v8"] .get-diamonds-page .page-container {
   position: relative;
   z-index: 1;
-  max-width: 1180px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: min(1180px, 100%);
   margin-inline: auto;
   padding-block: var(--pad-card) var(--space-12);
   padding-inline: var(--pad-page);
+  overflow-x: clip;
 }
 
 body[data-theme="v8"] .get-diamonds-page .history-page-head {
@@ -54,6 +47,18 @@ body[data-theme="v8"] .get-diamonds-stack {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+body[data-theme="v8"] .get-diamonds-stack > section[aria-label="Buy with Cash"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 /* Ambient orbs — fixed behind content */
@@ -112,15 +117,6 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
   }
 }
 
-@keyframes get-diamonds-sheen {
-  from {
-    transform: translateX(-120%) skewX(-18deg);
-  }
-  to {
-    transform: translateX(220%) skewX(-18deg);
-  }
-}
-
 @keyframes get-diamonds-holo {
   from {
     background-position: 0% 50%;
@@ -130,79 +126,13 @@ body[data-theme="v8"] .get-diamonds-ambient__sparkle {
   }
 }
 
-/* Hero — full-bleed art behind copy */
-body[data-theme="v8"] .get-diamonds-hero {
-  position: relative;
-  display: block;
-  min-height: 180px;
-  padding: var(--space-7) var(--space-7);
-  border-radius: 18px;
-  border: none;
-  background: #120b1e;
-  overflow: hidden;
-  isolation: isolate;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 48px rgba(0, 0, 0, 0.28);
-}
-
-/* Soft left scrim so title stays readable over the photo */
-body[data-theme="v8"] .get-diamonds-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    90deg,
-    rgba(12, 6, 22, 0.88) 0%,
-    rgba(12, 6, 22, 0.55) 38%,
-    rgba(12, 6, 22, 0.18) 62%,
-    transparent 100%
-  );
-}
-
-body[data-theme="v8"] .get-diamonds-hero__copy-block {
-  position: relative;
-  z-index: 2;
-  max-width: 420px;
-}
-
-body[data-theme="v8"] .get-diamonds-hero__title {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  font-size: var(--text-display);
-  font-weight: 750;
-  line-height: 1.05;
-  color: #ffffff;
-  text-shadow: 0 0 28px rgba(255, 95, 168, 0.18);
-}
-
-body[data-theme="v8"] .get-diamonds-hero__accent {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  margin-left: 0.15em;
-}
-
-body[data-theme="v8"] .get-diamonds-hero__copy {
-  margin: var(--space-2) 0 0;
-  max-width: 420px;
-  font-size: var(--text-title);
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.72);
-}
-
-/* Hero band — black shell, row on desktop / column on mobile, retina bg right */
+/* Hero band — full-bleed art under the pack carousel */
 body[data-theme="v8"] .get-diamonds-hero-band {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  min-height: 180px;
-  border-radius: 18px;
+  display: block;
+  min-height: 22rem;
+  margin-inline: calc(-1 * var(--pad-page));
+  border-radius: 0;
   overflow: hidden;
   isolation: isolate;
   background-color: #000000;
@@ -211,73 +141,21 @@ body[data-theme="v8"] .get-diamonds-hero-band {
     url("/images/store/diamondBackground2x.webp") 2x
   );
   background-repeat: no-repeat;
-  background-position: right center;
-  background-size: auto 100%;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 18px 48px rgba(0, 0, 0, 0.28);
+  background-position: center bottom;
+  background-size: cover;
 }
 
-/* Border above absolute art (overflow/children were covering a real border) */
-body[data-theme="v8"] .get-diamonds-hero-band::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  pointer-events: none;
-}
-
-body[data-theme="v8"] .get-diamonds-hero-band > .get-diamonds-hero--band {
-  position: relative;
-  z-index: 5;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: inherit;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-/* Keep copy readable over the diamond plate on the right */
-body[data-theme="v8"] .get-diamonds-hero-band > .get-diamonds-hero--band::after {
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.92) 0%,
-    rgba(0, 0, 0, 0.55) 42%,
-    rgba(0, 0, 0, 0.12) 68%,
-    transparent 100%
-  );
-}
-
-/* Light sweep under glow / float / woman only */
-body[data-theme="v8"] .get-diamonds-hero-band__sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgba(255, 255, 255, 0.16) 50%,
-    transparent 65%
-  );
-  animation: get-diamonds-sheen 7s ease-in-out infinite;
-  will-change: transform;
-}
-
-/* Glow holder — previous size, square box, clipped */
+/* Glow holder — centered behind woman */
 body[data-theme="v8"] .get-diamonds-hero-band__glow-wrap {
   position: absolute;
-  right: 11.8%;
-  top: 91%;
+  left: 50%;
+  bottom: -18%;
   z-index: 2;
-  height: 100%;
+  height: 95%;
   width: auto;
   aspect-ratio: 1 / 1;
   overflow: hidden;
-  transform: translateY(-50%);
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -305,15 +183,17 @@ body[data-theme="v8"] .get-diamonds-hero-band__glow {
 
 body[data-theme="v8"] .get-diamonds-hero-band__woman {
   position: absolute;
-  right: 0;
-  bottom: 0;
+  left: 50%;
+  bottom: -6%;
   z-index: 4;
-  height: 100%;
+  height: 112%;
   width: auto;
+  max-width: none;
   object-fit: cover;
-  object-position: 3dvh 44%;
+  object-position: center 12%;
   pointer-events: none;
   user-select: none;
+  transform: translateX(-50%);
   transform-origin: center bottom;
   animation: get-diamonds-woman-scale 8s ease-in-out infinite;
   will-change: transform;
@@ -322,22 +202,23 @@ body[data-theme="v8"] .get-diamonds-hero-band__woman {
 @keyframes get-diamonds-woman-scale {
   0%,
   100% {
-    transform: scale(1);
+    transform: translateX(-50%) scale(1);
   }
   50% {
-    transform: scale(1.03);
+    transform: translateX(-50%) scale(1.03);
   }
 }
 
 /* Floating diamonds — above glow, below woman */
 body[data-theme="v8"] .get-diamonds-hero-band__float-wrap {
   position: absolute;
-  right: 0;
+  left: 50%;
   bottom: 0;
   z-index: 3;
   height: 100%;
   width: auto;
   pointer-events: none;
+  transform: translateX(-50%);
   animation: get-diamonds-float-bob 7s ease-in-out infinite;
   will-change: transform;
 }
@@ -355,33 +236,32 @@ body[data-theme="v8"] .get-diamonds-hero-band__float {
 @keyframes get-diamonds-float-bob {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
   50% {
-    transform: translateY(-12px);
+    transform: translateX(-50%) translateY(-12px);
   }
 }
 
 @media (min-width: 640px) {
   body[data-theme="v8"] .get-diamonds-hero-band {
-    flex-direction: row;
-    align-items: center;
-    background-position: right 38%;
-    background-size: 55%;
+    min-height: 26rem;
   }
 
   body[data-theme="v8"] .get-diamonds-hero-band__glow-wrap {
-    width: 21rem;
+    width: 24rem;
     height: auto;
     max-height: none;
+    bottom: -12%;
   }
 
   body[data-theme="v8"] .get-diamonds-hero-band__woman {
-    width: 43rem;
+    height: 118%;
+    bottom: -8%;
   }
 
   body[data-theme="v8"] .get-diamonds-hero-band__float-wrap {
-    width: 40rem;
+    height: 110%;
   }
 }
 
@@ -400,13 +280,85 @@ body[data-theme="v8"] .get-diamonds-section__title {
   color: #ffffff;
 }
 
-/* Package grid */
-body[data-theme="v8"] .get-diamonds-packages {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--space-3);
+/* Diamonds / Coins segmented control above the coverflow */
+body[data-theme="v8"] .get-diamonds-currency-toggle {
+  display: inline-flex;
   align-items: center;
+  gap: var(--space-1);
+  margin: 0 auto var(--space-4);
+  padding: var(--space-1);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body[data-theme="v8"] .get-diamonds-currency-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 7.5rem;
+  height: 36px;
+  padding: 0 var(--space-4);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-family: inherit;
+  font-size: var(--text-caption);
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+body[data-theme="v8"] .get-diamonds-currency-toggle__btn.is-active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="v8"] .get-diamonds-currency-toggle__btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+}
+
+/* Package coverflow — same Swiper pose as homepage packs.
+ * Clip x so 3D peeks don't widen the page; peeks still show inside this band. */
+body[data-theme="v8"] .get-diamonds-packages {
+  align-self: stretch;
+  margin-inline: calc(-1 * var(--pad-page));
+  width: calc(100% + 2 * var(--pad-page));
+  max-width: none;
   padding-block: var(--space-2);
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+body[data-theme="v8"] .get-diamonds-packages-swiper.swiper,
+body[data-theme="v8"] .get-diamonds-packages-swiper.swiper-3d {
+  width: 100%;
+  overflow: hidden;
+  padding-block: var(--space-4);
+}
+
+body[data-theme="v8"] .get-diamonds-packages-swiper .swiper-wrapper {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-theme="v8"] .get-diamonds-packages-slide.swiper-slide {
+  position: relative;
+  width: min(72vw, 17.5rem);
+  height: auto;
+  background: transparent;
+  overflow: hidden;
+  transform-style: flat;
+  -webkit-transform-style: flat;
+}
+
+body[data-theme="v8"] .get-diamonds-packages-slide.swiper-slide-active {
+  z-index: 5 !important;
 }
 
 body[data-theme="v8"] .get-diamonds-package {
@@ -414,14 +366,51 @@ body[data-theme="v8"] .get-diamonds-package {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-5) var(--space-3-5) var(--space-3-5);
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(20, 16, 28, 0.92);
+  width: 100%;
+  min-height: 26rem;
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  border-radius: 22px;
+  border: 1px solid rgba(196, 120, 255, 0.45);
+  background:
+    radial-gradient(
+      ellipse at 50% 18%,
+      rgba(180, 80, 255, 0.28),
+      transparent 55%
+    ),
+    linear-gradient(
+      165deg,
+      rgba(48, 18, 72, 0.96) 0%,
+      rgba(14, 8, 24, 0.98) 55%,
+      rgba(8, 4, 16, 1) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 0 36px rgba(150, 40, 220, 0.28),
+    0 18px 40px rgba(0, 0, 0, 0.45);
   text-align: center;
-  transition:
-    border-color 160ms ease,
-    transform 160ms ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body[data-theme="v8"] .get-diamonds-package::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.55;
+  background:
+    radial-gradient(
+      ellipse 120% 60% at 50% 110%,
+      rgba(255, 255, 255, 0.14),
+      transparent 55%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 20%,
+      rgba(180, 120, 255, 0.18) 45%,
+      transparent 70%
+    );
 }
 
 /* Mobile/iOS: prevent long-press text highlight on store cards. */
@@ -435,37 +424,74 @@ body[data-theme="v8"] .get-diamonds-package {
   }
 }
 
-body[data-theme="v8"] .get-diamonds-package:hover {
-  border-color: rgba(255, 70, 160, 0.35);
-  transform: translateY(-2px);
+body[data-theme="v8"] .get-diamonds-package.is-featured {
+  border-color: rgba(220, 140, 255, 0.75);
+  box-shadow:
+    0 0 0 1px rgba(255, 180, 255, 0.12) inset,
+    0 0 42px rgba(200, 60, 255, 0.38),
+    0 18px 40px rgba(0, 0, 0, 0.45);
 }
 
-body[data-theme="v8"] .get-diamonds-package.is-featured {
-  border-color: rgba(255, 50, 150, 0.7);
-  transform: scale(1.06);
-  z-index: 1;
-  box-shadow:
-    0 0 28px rgba(220, 30, 130, 0.22),
-    inset 0 0 0 1px rgba(255, 143, 196, 0.12);
+/* Coin packs — yellow / gold twin of the purple diamond cards */
+body[data-theme="v8"] .get-diamonds-package.is-coins {
+  border-color: rgba(232, 180, 70, 0.5);
   background:
+    radial-gradient(
+      ellipse at 50% 18%,
+      rgba(255, 190, 70, 0.28),
+      transparent 55%
+    ),
     linear-gradient(
-      160deg,
-      rgba(36, 12, 42, 0.96),
-      rgba(20, 16, 28, 0.92)
+      165deg,
+      rgba(72, 48, 12, 0.96) 0%,
+      rgba(22, 14, 6, 0.98) 55%,
+      rgba(10, 7, 3, 1) 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(255, 220, 140, 0.08) inset,
+    0 0 36px rgba(220, 150, 40, 0.28),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+body[data-theme="v8"] .get-diamonds-package.is-coins.is-featured {
+  border-color: rgba(255, 200, 90, 0.8);
+  box-shadow:
+    0 0 0 1px rgba(255, 230, 160, 0.14) inset,
+    0 0 42px rgba(240, 170, 50, 0.4),
+    0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+body[data-theme="v8"] .get-diamonds-package.is-coins::after {
+  background:
+    radial-gradient(
+      ellipse 120% 60% at 50% 110%,
+      rgba(255, 220, 140, 0.16),
+      transparent 55%
+    ),
+    linear-gradient(
+      115deg,
+      transparent 20%,
+      rgba(255, 190, 70, 0.2) 45%,
+      transparent 70%
     );
 }
 
-body[data-theme="v8"] .get-diamonds-package.is-featured:hover {
-  transform: scale(1.06) translateY(-2px);
+body[data-theme="v8"] .get-diamonds-package.is-coins .get-diamonds-package__icon {
+  filter: drop-shadow(0 0 20px rgba(255, 190, 70, 0.55));
+}
+
+body[data-theme="v8"] .get-diamonds-package.is-coins .get-diamonds-package__amount-label {
+  color: rgba(255, 210, 120, 0.9);
 }
 
 body[data-theme="v8"] .get-diamonds-package.is-featured::before {
   content: "";
   position: absolute;
   inset: 0;
+  z-index: 0;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.4;
   background: linear-gradient(
     110deg,
     rgba(255, 95, 168, 0) 0%,
@@ -480,8 +506,9 @@ body[data-theme="v8"] .get-diamonds-package.is-featured::before {
 
 body[data-theme="v8"] .get-diamonds-package__badge {
   position: absolute;
-  top: -8px;
-  left: 12px;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
   padding: var(--space-1) var(--space-2);
   border-radius: 999px;
   font-size: var(--text-caption);
@@ -508,96 +535,81 @@ body[data-theme="v8"] .get-diamonds-package__badge.is-bonus {
   border-color: rgba(196, 181, 253, 0.35);
 }
 
+body[data-theme="v8"] .get-diamonds-package__kicker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: var(--space-7) 0 0;
+  align-self: center;
+  white-space: nowrap;
+  font-size: var(--text-title);
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+}
+
 body[data-theme="v8"] .get-diamonds-package__icon {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  margin-top: var(--space-1);
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-top: var(--space-4);
+  filter: drop-shadow(0 0 20px rgba(190, 100, 255, 0.55));
+}
+
+body[data-theme="v8"] .get-diamonds-package__amount-box {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin-top: auto;
+  padding: var(--space-3) var(--space-3-5);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+body[data-theme="v8"] .get-diamonds-package__amount-label {
+  display: block;
+  font-size: var(--text-caption);
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(232, 196, 120, 0.85);
 }
 
 body[data-theme="v8"] .get-diamonds-package__amount {
-  margin: var(--space-2) 0 0;
-  font-size: var(--text-headline);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: var(--space-1-5) 0 0;
+  font-size: var(--text-display);
   font-weight: 750;
   font-variant-numeric: tabular-nums;
   line-height: 1;
   color: #ffffff;
 }
 
-body[data-theme="v8"] .get-diamonds-package__label {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-caption);
-  color: rgba(255, 255, 255, 0.55);
-}
-
 body[data-theme="v8"] .get-diamonds-package__bonus {
-  margin-top: var(--space-1-5);
+  margin: var(--space-1-5) 0 0;
   font-size: var(--text-caption);
   font-weight: 600;
   color: #ff5fa8;
 }
 
-body[data-theme="v8"] .get-diamonds-package__price {
-  margin-top: var(--space-3);
-  font-size: var(--text-caption);
-  font-weight: 650;
-  color: #ffffff;
-}
-
 body[data-theme="v8"] .get-diamonds-package__buy {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 13rem;
-  height: 36px;
-  margin-top: var(--space-3);
-  margin-inline: auto;
-}
-
-/* Featured Buy matches Discover hf-buy slot sizing */
-body[data-theme="v8"] .get-diamonds-package.is-featured .get-diamonds-package__buy {
-  height: 56px;
-  min-height: 56px;
-}
-
-/* Outline Buy — same language as Discover Follow chip */
-body[data-theme="v8"] .get-diamonds-package__buy--outline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid oklch(0.66 0.3 5.67);
-  border-radius: 999px;
-  background: transparent;
-  color: oklch(1 0 0);
-  font-family: inherit;
-  font-size: var(--text-caption);
-  font-weight: 500;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: none;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    transform 0.1s ease;
-}
-
-body[data-theme="v8"] .get-diamonds-package__buy--outline:hover:not(:disabled) {
-  background: transparent;
-  border-color: oklch(0.66 0.3 5.67);
-}
-
-body[data-theme="v8"] .get-diamonds-package__buy--outline:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-body[data-theme="v8"] .get-diamonds-package__buy--outline:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-body[data-theme="v8"] .get-diamonds-package__buy--outline:focus-visible {
-  outline: 2px solid oklch(1 0 0);
-  outline-offset: 3px;
+  height: 48px;
+  margin-top: var(--space-4);
 }
 
 /* Trust row */
@@ -882,10 +894,6 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
 }
 
 @media (max-width: 1023px) {
-  body[data-theme="v8"] .get-diamonds-packages {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   body[data-theme="v8"] .get-diamonds-exchange__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -897,72 +905,24 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
     padding-inline: var(--pad-page);
   }
 
-  body[data-theme="v8"] .get-diamonds-hero {
-    min-height: 168px;
-    padding: 22px 18px;
-  }
-
   body[data-theme="v8"] .get-diamonds-hero-band {
-    min-height: 18rem;
-    flex-direction: column;
-    background-position: center 5rem;
-    background-size: cover;
+    min-height: 22rem;
   }
 
   body[data-theme="v8"] .get-diamonds-hero-band__glow-wrap {
-    position: absolute;
-    right: 16%;
-    bottom: -37%;
-    top: auto;
-    z-index: 2;
-    height: 90%;
-    width: auto;
-    aspect-ratio: 1 / 1;
-    transform: none;
+    bottom: -22%;
+    height: 92%;
   }
 
   body[data-theme="v8"] .get-diamonds-hero-band__woman {
-    object-position: -4rem 3rem;
+    height: 118%;
+    bottom: -4%;
+    object-position: center 8%;
     filter: drop-shadow(-2px -4px 8px oklch(0 0 0 / 0.25));
   }
 
-  body[data-theme="v8"] .get-diamonds-hero-band__float-wrap {
-    right: -1.5rem;
-    bottom: -1rem;
-    z-index: 3;
-    height: 88%;
-  }
-
-  body[data-theme="v8"] .get-diamonds-hero::after {
-    background: linear-gradient(
-      180deg,
-      rgba(12, 6, 22, 0.72) 0%,
-      rgba(12, 6, 22, 0.35) 45%,
-      rgba(12, 6, 22, 0.55) 100%
-    );
-  }
-
-  body[data-theme="v8"] .get-diamonds-hero-band > .get-diamonds-hero--band::after {
-    background: linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.42) 0%,
-      rgba(0, 0, 0, 0.16) 45%,
-      rgba(0, 0, 0, 0.28) 100%
-    );
-  }
-
-  body[data-theme="v8"] .get-diamonds-packages {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  /* Best Value full row, then 2500 / 5000 underneath */
-  body[data-theme="v8"] .get-diamonds-package.is-featured {
-    grid-column: 1 / -1;
-    transform: none;
-  }
-
-  body[data-theme="v8"] .get-diamonds-package.is-featured:hover {
-    transform: translateY(-2px);
+  body[data-theme="v8"] .get-diamonds-packages-slide.swiper-slide {
+    width: min(78vw, 17.5rem);
   }
 
   body[data-theme="v8"] .get-diamonds-earn {
@@ -982,10 +942,8 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   }
 
   /* Mobile text floor: nothing under 1rem except "Need N more" */
-  body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__label,
+  body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__kicker,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__bonus,
-  body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__price,
-  body[data-theme="v8"] .get-diamonds-page .get-diamonds-package__buy--outline,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-trust,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-trust.is-footer,
   body[data-theme="v8"] .get-diamonds-page .get-diamonds-watch-ad__copy,
@@ -1018,7 +976,6 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
 @media (prefers-reduced-motion: reduce) {
   body[data-theme="v8"] .get-diamonds-ambient__orb,
   body[data-theme="v8"] .get-diamonds-ambient__sparkle,
-  body[data-theme="v8"] .get-diamonds-hero-band__sheen,
   body[data-theme="v8"] .get-diamonds-hero-band__glow,
   body[data-theme="v8"] .get-diamonds-hero-band__float-wrap,
   body[data-theme="v8"] .get-diamonds-hero-band__woman,
@@ -1028,12 +985,10 @@ body[data-theme="v8"] .get-diamonds-page .hub-redeem-card {
   }
 }
 
-body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__sheen,
 body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__glow,
 body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__float-wrap,
 body[data-theme="v8"] .get-diamonds-hero-band.is-paused .get-diamonds-hero-band__woman,
 html.get-diamonds-anims-off .get-diamonds-ambient__orb,
-html.get-diamonds-anims-off .get-diamonds-hero-band__sheen,
 html.get-diamonds-anims-off .get-diamonds-hero-band__glow,
 html.get-diamonds-anims-off .get-diamonds-hero-band__float-wrap,
 html.get-diamonds-anims-off .get-diamonds-hero-band__woman,

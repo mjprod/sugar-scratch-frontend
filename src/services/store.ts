@@ -9,7 +9,7 @@ export type StoreBadge =
   | "Bonus"
   | "New";
 
-export type StoreProductKind = "rewarded-ad" | "diamonds";
+export type StoreProductKind = "rewarded-ad" | "diamonds" | "coins";
 
 /** Soft-currency exchange — intentionally worse $/Diamond than cash at higher tiers (GD-AC22). */
 export const COIN_EXCHANGE_OPTIONS = [
@@ -324,7 +324,65 @@ const CATALOG: StoreProduct[] = [
     order: 6,
     available: true,
   },
+  {
+    id: "c500",
+    kind: "coins",
+    title: "500 Coins",
+    priceLabel: "$2.99",
+    diamonds: 0,
+    coins: 500,
+    order: 7,
+    available: true,
+  },
+  {
+    id: "c2000",
+    kind: "coins",
+    title: "2000 Coins",
+    priceLabel: "$7.99",
+    diamonds: 0,
+    coins: 2000,
+    badge: "Popular",
+    order: 8,
+    available: true,
+  },
+  {
+    id: "c6000",
+    kind: "coins",
+    title: "6000 Coins",
+    priceLabel: "$19.99",
+    diamonds: 0,
+    coins: 6000,
+    badge: "Best Value",
+    order: 9,
+    available: true,
+  },
+  {
+    id: "c15000",
+    kind: "coins",
+    title: "15000 Coins",
+    priceLabel: "$39.99",
+    diamonds: 0,
+    coins: 15000,
+    badge: "Bonus",
+    order: 10,
+    available: true,
+  },
+  {
+    id: "c40000",
+    kind: "coins",
+    title: "40000 Coins",
+    priceLabel: "$69.99",
+    diamonds: 0,
+    coins: 40000,
+    order: 11,
+    available: true,
+  },
 ];
+
+/** Local coin SKUs when the live catalog has none yet. */
+export const COIN_PACK_FIXTURES: StoreProduct[] = CATALOG.filter(
+  (p) => p.kind === "coins",
+);
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -415,7 +473,7 @@ function newSessionId() {
 export async function createPurchaseSession(
   product: StoreProduct,
 ): Promise<PurchaseSession> {
-  if (product.kind !== "diamonds") {
+  if (product.kind !== "diamonds" && product.kind !== "coins") {
     throw new Error("Only paid products create a payment session.");
   }
   try {
