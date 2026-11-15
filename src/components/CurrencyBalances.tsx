@@ -8,30 +8,29 @@ export { formatBalance, formatCompactBalance } from "@/lib/formatBalance";
 export function CurrencyBalances({
   coins,
   diamonds,
-  onOpenStore: _onOpenStore,
+  onOpenStore,
   storeActive = false,
-  interactive: _interactive = true,
+  interactive = true,
   compact = false,
   diamondsOnly = false,
 }: {
   coins: number | null;
   diamonds: number | null;
-  /** Kept for call-site compatibility; store tap is no longer wired here. */
+  /** Opens Get Diamonds when the diamond chip is tapped. */
   onOpenStore?: () => void;
   /** Subtle contextual highlight while Store is open. */
   storeActive?: boolean;
-  /** Kept for call-site compatibility; balances are display-only now. */
+  /** When false, balances stay display-only (e.g. game HUD). */
   interactive?: boolean;
   /** Icon only — used by the game HUD. */
   compact?: boolean;
   /** Hide the coin chip (game HUD diamond-only). */
   diamondsOnly?: boolean;
 }) {
-  void _onOpenStore;
-  void _interactive;
   const coinLabel = formatBalance(coins);
   const diamondLabel = formatBalance(diamonds);
   const showCoins = !diamondsOnly;
+  const diamondOpensStore = Boolean(interactive && onOpenStore);
 
   const coinInner = (
     <>
@@ -80,6 +79,9 @@ export function CurrencyBalances({
     "top-nav-resource top-nav-resource--diamond inline-flex min-h-11 min-w-11 items-center gap-1.5 rounded-md px-1.5",
     compact ? "is-compact" : "",
     storeActive ? "top-nav-resource--store-active" : "",
+    diamondOpensStore
+      ? "top-nav-resource--action cursor-pointer border-0 bg-transparent font-inherit text-inherit"
+      : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -95,9 +97,20 @@ export function CurrencyBalances({
         </span>
       ) : null}
 
-      <span className={diamondClass} aria-label={`${diamondLabel} Diamonds`}>
-        {diamondInner}
-      </span>
+      {diamondOpensStore ? (
+        <button
+          type="button"
+          className={diamondClass}
+          onClick={onOpenStore}
+          aria-label={`${diamondLabel} Diamonds. Get Diamonds.`}
+        >
+          {diamondInner}
+        </button>
+      ) : (
+        <span className={diamondClass} aria-label={`${diamondLabel} Diamonds`}>
+          {diamondInner}
+        </span>
+      )}
     </div>
   );
 }
