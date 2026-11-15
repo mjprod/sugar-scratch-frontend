@@ -144,7 +144,7 @@ manualChunks(id) {
       host: env.VITE_DEV_HOST || "0.0.0.0",
       // :5173 is often taken by MJ Promoter locally; LP iframes from :5080
       // expect this app on :5174 (override with --port / VITE_DEV_PORT).
-      port: Number(env.VITE_DEV_PORT || process.env.VITE_DEV_PORT || 5174) || 5174,
+      port: Number.parseInt(env.VITE_DEV_PORT || process.env.VITE_DEV_PORT || "5174", 10) || 5174,
       strictPort: true,
       https: localHttps || undefined,
       fs: {
