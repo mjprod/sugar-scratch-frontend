@@ -142,7 +142,9 @@ manualChunks(id) {
       // Default 0.0.0.0 so phones can hit https://<lan-ip>:5173 (mkcert workflow).
       // Override with VITE_DEV_HOST=localhost to bind loopback only.
       host: env.VITE_DEV_HOST || "0.0.0.0",
-      port: 5173,
+      // :5173 is often taken by MJ Promoter locally; LP iframes from :5080
+      // expect this app on :5174 (override with --port / VITE_DEV_PORT).
+      port: Number(env.VITE_DEV_PORT || process.env.VITE_DEV_PORT || 5174) || 5174,
       strictPort: true,
       https: localHttps || undefined,
       fs: {
@@ -177,7 +179,7 @@ manualChunks(id) {
     },
     preview: {
       host: env.VITE_DEV_HOST || "0.0.0.0",
-      port: 5173,
+      port: Number(env.VITE_DEV_PORT || process.env.VITE_DEV_PORT || 5174) || 5174,
       https: localHttps || undefined,
     },
   };
