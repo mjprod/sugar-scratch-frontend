@@ -139,7 +139,7 @@ manualChunks(id) {
       },
     },
     server: {
-      // Default 0.0.0.0 so phones can hit https://<lan-ip>:5173 (mkcert workflow).
+      // Default 0.0.0.0 so phones can hit https://<lan-ip>:5174 (mkcert workflow).
       // Override with VITE_DEV_HOST=localhost to bind loopback only.
       host: env.VITE_DEV_HOST || "0.0.0.0",
       // :5173 is often taken by MJ Promoter locally; LP iframes from :5080
