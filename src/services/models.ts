@@ -296,7 +296,10 @@ export function modelCoverUrl(model: BackendModel | null | undefined) {
 
 /** Prefer 2× dress cutout when present; fall back to 1×. */
 export function modelProfileDressUrl(model: BackendModel | null | undefined) {
-  return optionalMedia(model?.profileDress2xUrl) || optionalMedia(model?.profileDressUrl);
+  return (
+    optionalMedia(model?.profileDress2xUrl) ||
+    optionalMedia(model?.profileDressUrl)
+  );
 }
 
 export function modelSwipePosterUrl(model: BackendModel | null | undefined) {
