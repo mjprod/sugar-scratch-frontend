@@ -11,6 +11,8 @@ const MOBILE_CTA_QUERY = "(max-width: 980px)";
 type McpPhotoPlayCtaProps = {
   playPrice: number | null;
   freePlay?: boolean;
+  /** Free Play on + locked — anticipate then slide down out of the cell. */
+  tuckedAway?: boolean;
   ariaLabel: string;
   onPlay: () => void;
 };
@@ -41,23 +43,39 @@ function useCssPhotoCta() {
 export function McpPhotoPlayCta({
   playPrice,
   freePlay = false,
+  tuckedAway = false,
   ariaLabel,
   onPlay,
 }: McpPhotoPlayCtaProps) {
   const cssCta = useCssPhotoCta();
-  const gradWrapRef = useMcpCtaGradMotion(cssCta);
+  const gradWrapRef = useMcpCtaGradMotion(cssCta && !tuckedAway);
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const pendingPlayRef = useRef(false);
   const openedAtRef = useRef(0);
   const leaveDoneRef = useRef(false);
+  const wasTuckedRef = useRef(tuckedAway);
+  const [revealFromTuck, setRevealFromTuck] = useState(false);
   const priced = playPrice != null;
   const showCost = priced && !freePlay;
-  const showConfirm = showCost && (confirm || leaving);
+  const showConfirm = showCost && (confirm || leaving) && !tuckedAway;
   const resolvedAria = freePlay
     ? ariaLabel.replace(/^Play\b/, "Free Play").replace(/\s+for\s+\d+\s+diamonds$/i, "")
     : ariaLabel;
+
+  useEffect(() => {
+    if (!tuckedAway) return;
+    setConfirm(false);
+    setLeaving(false);
+    pendingPlayRef.current = false;
+  }, [tuckedAway]);
+
+  useEffect(() => {
+    if (wasTuckedRef.current && !tuckedAway) setRevealFromTuck(true);
+    if (tuckedAway) setRevealFromTuck(false);
+    wasTuckedRef.current = tuckedAway;
+  }, [tuckedAway]);
 
   function finishLeave() {
     if (leaveDoneRef.current) return;
@@ -76,6 +94,7 @@ export function McpPhotoPlayCta({
   }
 
   function activate() {
+    if (tuckedAway) return;
     if (freePlay || !priced) {
       onPlay();
       return;
@@ -125,9 +144,11 @@ export function McpPhotoPlayCta({
         "mcp-photo-play-cta",
         freePlay ? "is-free-play" : priced ? "is-priced" : "is-owned",
         cssCta ? "is-css" : "",
+        tuckedAway ? "is-tucked" : revealFromTuck ? "is-shown" : "",
       ]
         .filter(Boolean)
         .join(" ")}
+      aria-hidden={tuckedAway}
       onClick={(event) => event.stopPropagation()}
     >
       {cssCta ? (
@@ -142,6 +163,8 @@ export function McpPhotoPlayCta({
               .join(" ")}
             aria-label={resolvedAria}
             aria-expanded={expanded}
+            tabIndex={tuckedAway ? -1 : undefined}
+            disabled={tuckedAway}
             onClick={activate}
           >
             {freePlay ? (
@@ -192,6 +215,8 @@ export function McpPhotoPlayCta({
           cornerRadius={999}
           aria-label={resolvedAria}
           aria-expanded={expanded}
+          tabIndex={tuckedAway ? -1 : undefined}
+          disabled={tuckedAway}
           onClick={activate}
         />
       )}

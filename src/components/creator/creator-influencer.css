@@ -934,6 +934,11 @@ body[data-theme="v8"] .cpv2-theme-page-head {
   flex-direction: column;
 }
 
+/* Progress overlay sits above the sticky Free Play dock (z-index: 45). */
+body[data-theme="v8"] .cpv2-theme-page-head[data-open="true"] {
+  z-index: 50;
+}
+
 /* Shell already clears the HUD — don't stack mcp-top's diamond offset again. */
 body[data-theme="v8"] .cpv2-theme-page-top.mcp-top {
   margin-top: var(--space-6);
@@ -1106,6 +1111,49 @@ body[data-theme="v8"] .cpv2-theme-motion-buy .mcp-photo-play-cta-css {
   font-size: var(--text-body);
   font-weight: 600;
   overflow: hidden; /* clip mesh blobs to the pill */
+}
+
+body[data-theme="v8"] .cpv2-theme-sticky-scope {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  /* Air under the theme title row — keeps Free Play dock + Buy Packs aligned. */
+  padding-top: var(--space-3);
+}
+
+/* Dock sits on the toolbar row — don't push the first section down. */
+body[data-theme="v8"]
+  .cpv2-theme-sticky-scope
+  > .cpv2-theme-page-section:first-of-type {
+  margin-top: 0;
+}
+
+/*
+ * Direct child of sticky-scope so it can stick through photos.
+ * height:0 keeps document flow in the toolbar spacer; glass paints over it.
+ */
+body[data-theme="v8"] .cpv2-theme-free-play-dock {
+  position: sticky;
+  /* Clear floating top nav / diamond HUD (same token as page content). */
+  top: calc(var(--app-diamond-offset, 64px) + var(--space-3));
+  z-index: 45;
+  width: max-content;
+  height: 0;
+  margin: 0;
+  pointer-events: none;
+}
+
+body[data-theme="v8"] .cpv2-theme-free-play-dock .cpv2-theme-free-play-glass {
+  pointer-events: auto;
+}
+
+/* Matches Free Play glass footprint so Buy Packs stays right. */
+body[data-theme="v8"] .cpv2-theme-free-play-spacer {
+  flex: 0 0 auto;
+  width: 9.3rem;
+  height: 42px;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 body[data-theme="v8"] .cpv2-theme-motion-toolbar .cpv2-theme-free-play-glass {

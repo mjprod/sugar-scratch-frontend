@@ -165,7 +165,7 @@ export function LockStatusBanner({
         }}
         transition={instant ?? LABEL_MOTION}
       >
-        <span className="relative block w-max whitespace-nowrap font-medium text-caption tracking-[0.2px] text-white min-[981px]:text-body">
+        <span className="relative block w-max whitespace-nowrap font-medium text-body tracking-[0.2px] text-white min-[981px]:text-title">
           <span className="invisible" aria-hidden="true">
             Unlocked
           </span>

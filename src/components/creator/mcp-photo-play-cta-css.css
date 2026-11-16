@@ -427,11 +427,11 @@
 }
 
 .mcp-photo-play-cta-css--claim .mcp-photo-play-cta-css__label {
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
 }
 
 .mcp-photo-play-cta-css--claim .mcp-photo-play-cta-css__price {
-  font-size: var(--text-caption);
+  font-size: var(--text-body);
 }
 
 .mcp-photo-play-cta-css--claim .mcp-photo-play-cta-css__diamond {

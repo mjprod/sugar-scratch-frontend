@@ -2589,7 +2589,7 @@ body[data-theme="v8"] .player-welcome-gift__bow::after {
 
 /* Slot for parent-filled squircle CTA (daily claim). */
 body[data-theme="v8"] .player-welcome-claim {
-  --cta-font-size: var(--text-caption);
+  --cta-font-size: var(--text-body);
   position: relative;
   z-index: 3;
   display: grid;

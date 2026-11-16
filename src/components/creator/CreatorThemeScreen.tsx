@@ -621,11 +621,9 @@ function CreatorThemeScreenInner({
           ) : null}
         </div>
 
-        <section
-          className="cpv2-theme-page-section"
-          aria-label="Motion cards"
-        >
-          <div className="cpv2-theme-motion-toolbar">
+        {/* Sticky dock is a direct child of this scope (not the short toolbar). */}
+        <div className="cpv2-theme-sticky-scope">
+          <div className="cpv2-theme-free-play-dock">
             <div
               className={
                 freePlay
@@ -667,40 +665,54 @@ function CreatorThemeScreenInner({
                 </span>
               </button>
             </div>
-            <div className="cpv2-theme-motion-buy">
-              <CtaButton
-                forceCss
-                type="button"
-                label="Buy Packs?"
-                costAmount={null}
-                strokeWidth={1}
-                cornerRadius={999}
-                width={152}
-                height={40}
-                className="cpv2-theme-motion-buy__btn"
-                onClick={openBuyPacks}
-              />
-            </div>
           </div>
-          {items.length > 0 ? (
-            <MobileCssCarousel
-              items={items}
-              selectedId={activeCardId}
-              slideCta="play"
-              freePlayMode={freePlay}
-              ownedFreePlayIds={ownedFreePlayIds}
-              lockedMotionIds={lockedMotionIds}
-              motionTheme={motionTheme}
-              onUnlock={() => openBuyPacks()}
-              onView={(item) => void openMotion(item)}
-              onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
-            />
-          ) : (
-            <p className="cpv2-theme-page-empty">No motion cards yet.</p>
-          )}
-        </section>
 
-        <section className="mcp-photos cpv2-theme-page-section" aria-label={photoTitle}>
+          <section
+            className="cpv2-theme-page-section"
+            aria-label="Motion cards"
+          >
+            <div className="cpv2-theme-motion-toolbar">
+              <div
+                className="cpv2-theme-free-play-spacer"
+                aria-hidden="true"
+              />
+              <div className="cpv2-theme-motion-buy">
+                <CtaButton
+                  forceCss
+                  type="button"
+                  label="Buy Packs?"
+                  costAmount={null}
+                  strokeWidth={1}
+                  cornerRadius={999}
+                  width={152}
+                  height={40}
+                  className="cpv2-theme-motion-buy__btn"
+                  onClick={openBuyPacks}
+                />
+              </div>
+            </div>
+            {items.length > 0 ? (
+              <MobileCssCarousel
+                items={items}
+                selectedId={activeCardId}
+                slideCta="play"
+                freePlayMode={freePlay}
+                ownedFreePlayIds={ownedFreePlayIds}
+                lockedMotionIds={lockedMotionIds}
+                motionTheme={motionTheme}
+                onUnlock={() => openBuyPacks()}
+                onView={(item) => void openMotion(item)}
+                onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
+              />
+            ) : (
+              <p className="cpv2-theme-page-empty">No motion cards yet.</p>
+            )}
+          </section>
+
+          <section
+            className="mcp-photos cpv2-theme-page-section"
+            aria-label={photoTitle}
+          >
           <div
             className={[
               "mcp-photos-panel",
@@ -744,19 +756,21 @@ function CreatorThemeScreenInner({
                   : null) ??
                 defaultPhotoPrice;
               const useFreePlay = freePlay && photoUnlocked;
-              // Free Play on + locked → hide CTA. Free Play off → diamond buy stays.
-              const showPlayCta = !freePlay || photoUnlocked;
+              // Free Play on + locked → tuck CTA down (still mounted for exit anim).
+              const tuckedAway = freePlay && !photoUnlocked;
               return (
                 <div
                   key={`${activeCardId ?? "theme"}-photo-${index}`}
                   className={[
                     "mcp-photo-cell",
-                    owned
+                    // Purchased once → full color (not grayscale unplayed).
+                    photoUnlocked
                       ? "is-unlocked"
                       : slot.src
                         ? "is-unplayed"
                         : "is-locked",
-                    showPlayCta ? "has-price-cta" : "",
+                    // Clip while tucking; glow room when CTA is interactive.
+                    tuckedAway ? "is-tucking-cta" : "has-price-cta",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -777,24 +791,24 @@ function CreatorThemeScreenInner({
                       status={photoUnlocked ? "unlocked" : "locked"}
                     />
                   </div>
-                  {showPlayCta ? (
-                    <McpPhotoPlayCta
-                      playPrice={playPrice}
-                      freePlay={useFreePlay}
-                      ariaLabel={
-                        useFreePlay
-                          ? `Free Play ${photoTitle} ${index + 1}`
-                          : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                      }
-                      onPlay={() => void openPhoto(index)}
-                    />
-                  ) : null}
+                  <McpPhotoPlayCta
+                    playPrice={playPrice}
+                    freePlay={useFreePlay}
+                    tuckedAway={tuckedAway}
+                    ariaLabel={
+                      useFreePlay
+                        ? `Free Play ${photoTitle} ${index + 1}`
+                        : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
+                    }
+                    onPlay={() => void openPhoto(index)}
+                  />
                 </div>
               );
             })}
             </div>
           </div>
-        </section>
+          </section>
+        </div>
       </div>
     </section>
   );
