@@ -33,7 +33,7 @@ export const MOTION_CARD_THEMES: MotionCardTheme[] = [
   "teacher",
 ];
 
-const TEASE_TINT: Record<MotionCardTheme, string> = {
+export const MOTION_TEASE_TINT: Record<MotionCardTheme, string> = {
   police: "oklch(0.71 0.15 99.8 / 0.62)",
   nurse: "oklch(71.8% 0.2 349deg / 0.6)",
   fire: "oklch(72.2% 0.18 44.5deg / 0.6)",
@@ -41,13 +41,68 @@ const TEASE_TINT: Record<MotionCardTheme, string> = {
   teacher: "oklch(62% 0.2 147deg / 0.6)",
 };
 
-const TEASE_COPY: Record<MotionCardTheme, string> = {
+export const MOTION_TEASE_COPY: Record<MotionCardTheme, string> = {
   police: "CAUTION",
   nurse: "HANDLE WITH CARE",
   fire: "CONTENTS: HOT!",
   gym: "GET IT IN",
   teacher: "SCHOOL'S OUT",
 };
+
+/** Map theme id/name → police|nurse|fire|gym|teacher tease art. */
+export function resolveMotionCardTheme(idOrName: string): MotionCardTheme {
+  const key = idOrName.toLowerCase();
+  if (key.includes("nurse")) return "nurse";
+  if (key.includes("teacher")) return "teacher";
+  if (key.includes("gym") || key.includes("fitness")) return "gym";
+  if (
+    key.includes("fire") ||
+    key.includes("firefighter") ||
+    key.includes("firegirl")
+  ) {
+    return "fire";
+  }
+  return "police";
+}
+
+/** Diagonal locked-card tease (HANDLE WITH CARE / CONTENTS: HOT! / …). */
+export function MotionTeaseBanner({
+  theme = "police",
+  posterUrl,
+  className,
+}: {
+  theme?: MotionCardTheme;
+  posterUrl: string;
+  className?: string;
+}) {
+  const copy = MOTION_TEASE_COPY[theme];
+  return (
+    <div
+      className={["tease-banner", "is-static", className].filter(Boolean).join(" ")}
+      aria-hidden="true"
+    >
+      <div className="tease-banner__tape">
+        <img
+          className="tease-banner__frost"
+          src={posterUrl}
+          alt=""
+          draggable={false}
+        />
+        <div
+          className="tease-banner__tint"
+          style={{ background: MOTION_TEASE_TINT[theme] }}
+        />
+        <div className="tease-banner__copy">
+          <div className="tease-banner__copy-row">
+            <span>{copy}</span>
+            <span>{copy}</span>
+            <span>{copy}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export type MotionCardProps = {
   state?: MotionCardState;
@@ -244,13 +299,13 @@ export function MotionCard({
           />
           <div
             className="tease-banner__tint"
-            style={{ background: TEASE_TINT[theme] }}
+            style={{ background: MOTION_TEASE_TINT[theme] }}
           />
           <div className="tease-banner__copy">
             <div className="tease-banner__copy-row">
-              <span>{TEASE_COPY[theme]}</span>
-              <span>{TEASE_COPY[theme]}</span>
-              <span>{TEASE_COPY[theme]}</span>
+              <span>{MOTION_TEASE_COPY[theme]}</span>
+              <span>{MOTION_TEASE_COPY[theme]}</span>
+              <span>{MOTION_TEASE_COPY[theme]}</span>
             </div>
             <div className="tease-banner__hint">Tap to Collect</div>
           </div>

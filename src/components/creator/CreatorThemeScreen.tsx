@@ -43,6 +43,7 @@ import {
   type Iteration,
 } from "@/features/packs/types";
 import { MobileCssCarousel } from "@/features/packs/MobileCssCarousel";
+import { resolveMotionCardTheme } from "@/components/motion-card/MotionCard";
 import { Paths } from "@/routes/Paths";
 import { packUnitCost } from "@/services/purchase";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
@@ -438,18 +439,35 @@ function CreatorThemeScreenInner({
     }
     return packUnitCost();
   }, [boardMotion, slotPrices]);
-  const freePlayAllowed = Boolean(
-    boardTheme?.motionCards.some(
-      (card) =>
-        card.freePlayable ||
-        card.staticCards.some((slot) => slot.freePlayable),
-    ),
-  );
   /** Pink ring on unlocked motions while Free Play is on. */
   const ownedFreePlayIds = useMemo(
     () => unlockedMotionFreePlayIds(boardTheme?.motionCards ?? [], freePlay),
     [boardTheme, freePlay],
   );
+  /** null until board loads — then Locked/Unlocked banners + Unlock CTA. */
+  const lockedMotionIds = useMemo(() => {
+    if (!boardTheme) return null;
+    const ids = new Set<string>();
+    for (const card of boardTheme.motionCards) {
+      if (card.status === "locked") ids.add(card.id);
+    }
+    return ids;
+  }, [boardTheme]);
+  const motionTheme = useMemo(
+    () =>
+      resolveMotionCardTheme(
+        `${resolvedThemeId} ${theme?.name ?? themeId}`,
+      ),
+    [resolvedThemeId, theme?.name, themeId],
+  );
+
+  function openBuyPacks() {
+    navigate(Paths.creatorPacks(creatorId), {
+      state: {
+        from: Paths.creatorTheme(creatorId, resolvedThemeId || themeId),
+      },
+    });
+  }
 
   function goBack() {
     navigate(Paths.creator(creatorId));
@@ -457,12 +475,14 @@ function CreatorThemeScreenInner({
 
   async function openMotion(item: Iteration) {
     if (buying) return;
+    if (lockedMotionIds?.has(item.id)) {
+      openBuyPacks();
+      return;
+    }
     const card = motionCards.find((entry) => entry.id === item.id);
     if (!card) return;
     const playModelId = card.modelId?.trim() || modelId || "";
     if (!playModelId) return;
-    const boardCard =
-      boardTheme?.motionCards.find((entry) => entry.id === card.id) ?? null;
     // Toggle on → free-play path for every motion CTA (label matches).
     const useFreePlay = freePlay;
     setBuying(true);
@@ -485,7 +505,12 @@ function CreatorThemeScreenInner({
     const photoId =
       boardMotion?.staticCards[slotIndex]?.id ||
       photoScratchIdForSlot(activeCardId, slotIndex);
-    const useFreePlay = freePlay;
+    const boardSlot = boardMotion?.staticCards[slotIndex];
+    const photoUnlocked = Boolean(
+      boardSlot?.owned || boardSlot?.unlocked || photoPlayed[slotIndex],
+    );
+    // Free Play only after the photo has been purchased once.
+    const useFreePlay = freePlay && photoUnlocked;
     setBuying(true);
     const ok = await registerPlay("photo", photoId, useFreePlay);
     setBuying(false);
@@ -601,51 +626,47 @@ function CreatorThemeScreenInner({
           aria-label="Motion cards"
         >
           <div className="cpv2-theme-motion-toolbar">
-            {freePlayAllowed ? (
-              <div
-                className={
-                  freePlay
-                    ? "cpv2-theme-free-play-glass is-free-play"
-                    : "cpv2-theme-free-play-glass"
-                }
+            <div
+              className={
+                freePlay
+                  ? "cpv2-theme-free-play-glass is-free-play"
+                  : "cpv2-theme-free-play-glass"
+              }
+            >
+              <button
+                type="button"
+                className={freePlay ? "cpv2-free-play is-on" : "cpv2-free-play"}
+                role="switch"
+                aria-checked={freePlay}
+                aria-label={`Free play for ${theme?.name ?? "theme"}`}
+                onClick={() => setFreePlay((on) => !on)}
               >
-                <button
-                  type="button"
-                  className={
-                    freePlay ? "cpv2-free-play is-on" : "cpv2-free-play"
-                  }
-                  role="switch"
-                  aria-checked={freePlay}
-                  aria-label={`Free play for ${theme?.name ?? "theme"}`}
-                  onClick={() => setFreePlay((on) => !on)}
-                >
-                  <span className="cpv2-free-play-clip" aria-hidden="true">
-                    <span
-                      className={
-                        freePlay
-                          ? "cpv2-free-play-track is-on"
-                          : "cpv2-free-play-track"
-                      }
-                    >
-                      <span className="cpv2-free-play-label">Free Play?</span>
-                      <span className="cpv2-free-play-label">
-                        Free: <span className="cpv2-free-play-on">ON</span>
-                      </span>
-                    </span>
-                  </span>
+                <span className="cpv2-free-play-clip" aria-hidden="true">
                   <span
                     className={
                       freePlay
-                        ? "cpv2-free-play-switch is-on"
-                        : "cpv2-free-play-switch"
+                        ? "cpv2-free-play-track is-on"
+                        : "cpv2-free-play-track"
                     }
-                    aria-hidden="true"
                   >
-                    <span className="cpv2-free-play-knob" />
+                    <span className="cpv2-free-play-label">Free Play?</span>
+                    <span className="cpv2-free-play-label">
+                      Free: <span className="cpv2-free-play-on">ON</span>
+                    </span>
                   </span>
-                </button>
-              </div>
-            ) : null}
+                </span>
+                <span
+                  className={
+                    freePlay
+                      ? "cpv2-free-play-switch is-on"
+                      : "cpv2-free-play-switch"
+                  }
+                  aria-hidden="true"
+                >
+                  <span className="cpv2-free-play-knob" />
+                </span>
+              </button>
+            </div>
             <div className="cpv2-theme-motion-buy">
               <CtaButton
                 forceCss
@@ -657,16 +678,7 @@ function CreatorThemeScreenInner({
                 width={152}
                 height={40}
                 className="cpv2-theme-motion-buy__btn"
-                onClick={() =>
-                  navigate(Paths.creatorPacks(creatorId), {
-                    state: {
-                      from: Paths.creatorTheme(
-                        creatorId,
-                        resolvedThemeId || themeId,
-                      ),
-                    },
-                  })
-                }
+                onClick={openBuyPacks}
               />
             </div>
           </div>
@@ -677,6 +689,9 @@ function CreatorThemeScreenInner({
               slideCta="play"
               freePlayMode={freePlay}
               ownedFreePlayIds={ownedFreePlayIds}
+              lockedMotionIds={lockedMotionIds}
+              motionTheme={motionTheme}
+              onUnlock={() => openBuyPacks()}
               onView={(item) => void openMotion(item)}
               onFocusChange={(item) => setActiveCardId(item?.id ?? null)}
             />
@@ -711,18 +726,26 @@ function CreatorThemeScreenInner({
             <div className="mcp-photo-grid">
             {slots.map((slot, index) => {
               const owned = photoPlayed[index];
+              const boardSlot = boardMotion?.staticCards[index];
+              // Purchased once → Free Play eligible; otherwise keep diamond buy CTA.
+              const photoUnlocked = Boolean(
+                boardSlot?.owned || boardSlot?.unlocked || owned,
+              );
               const src =
                 slot.src ||
                 (activeCard ? motionTileStillUrl(activeCard) : "") ||
                 "/img/placeholder.webp";
               const scratchPrice = slotPrices[index];
-              const boardPrice = boardMotion?.staticCards[index]?.price;
+              const boardPrice = boardSlot?.price;
               const playPrice =
                 scratchPrice ??
                 (typeof boardPrice === "number" && Number.isFinite(boardPrice)
                   ? Math.round(boardPrice)
                   : null) ??
                 defaultPhotoPrice;
+              const useFreePlay = freePlay && photoUnlocked;
+              // Free Play on + locked → hide CTA. Free Play off → diamond buy stays.
+              const showPlayCta = !freePlay || photoUnlocked;
               return (
                 <div
                   key={`${activeCardId ?? "theme"}-photo-${index}`}
@@ -733,8 +756,10 @@ function CreatorThemeScreenInner({
                       : slot.src
                         ? "is-unplayed"
                         : "is-locked",
-                    "has-price-cta",
-                  ].join(" ")}
+                    showPlayCta ? "has-price-cta" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                   style={
                     {
                       // Column index — stagger left → right on motion change.
@@ -749,19 +774,21 @@ function CreatorThemeScreenInner({
                   />
                   <div className="mcp-photo-lock-banner">
                     <LockStatusBanner
-                      status={owned ? "unlocked" : "locked"}
+                      status={photoUnlocked ? "unlocked" : "locked"}
                     />
                   </div>
-                  <McpPhotoPlayCta
-                    playPrice={playPrice}
-                    freePlay={freePlay}
-                    ariaLabel={
-                      freePlay
-                        ? `Free Play ${photoTitle} ${index + 1}`
-                        : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                    }
-                    onPlay={() => void openPhoto(index)}
-                  />
+                  {showPlayCta ? (
+                    <McpPhotoPlayCta
+                      playPrice={playPrice}
+                      freePlay={useFreePlay}
+                      ariaLabel={
+                        useFreePlay
+                          ? `Free Play ${photoTitle} ${index + 1}`
+                          : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
+                      }
+                      onPlay={() => void openPhoto(index)}
+                    />
+                  ) : null}
                 </div>
               );
             })}

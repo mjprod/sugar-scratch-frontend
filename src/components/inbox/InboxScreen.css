@@ -11,38 +11,9 @@ body[data-theme="v8"] .inbox-page .app-page-shell-inner {
   }
 }
 
-body[data-theme="v8"] .inbox-unread-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: oklch(0.688 0.215 4.09);
-  box-shadow: 0 0 8px oklch(0.688 0.215 4.09 / 0.55);
-}
-
 body[data-theme="v8"] .inbox-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2-5);
-}
-
-body[data-theme="v8"] .inbox-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-body[data-theme="v8"] .inbox-section-label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  color: oklch(1 0 0 / 0.55);
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 body[data-theme="v8"] .inbox-header-filter .inbox-filter-label {
@@ -240,11 +211,6 @@ body[data-theme="v8"] .inbox-empty-wrap {
 body[data-theme="v8"] .inbox-empty-wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-}
-
-body[data-theme="v8"] .inbox-empty-wrap .inbox-section-head {
-  margin-bottom: 0;
 }
 
 body[data-theme="v8"] .inbox-item--skeleton {

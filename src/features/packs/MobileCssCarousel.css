@@ -157,6 +157,76 @@
   pointer-events: none;
 }
 
+/* Theme locked motions — match MotionCard desaturate + dark wash. */
+.mobile-css-carousel__pack.is-locked {
+  container-type: inline-size;
+}
+
+.mobile-css-carousel__pack.is-locked .mobile-css-carousel__poster {
+  filter: saturate(0);
+}
+
+.mobile-css-carousel__pack.is-locked .tease-banner {
+  z-index: 2;
+}
+
+.mobile-css-carousel__lock-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.mobile-css-carousel__lock-banner {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/*
+ * Active locked focus — top of focus rect. Entrance mirrors bottom CTA
+ * (280ms opacity + 8px slide), driven by sibling HUD `.is-visible`.
+ */
+.mobile-css-carousel__lock-banner.is-focus {
+  top: 8px;
+  z-index: 8;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition:
+    opacity 280ms ease-out,
+    transform 280ms ease-out;
+}
+
+.mobile-css-carousel__focus:has(.mobile-css-carousel__hud.is-visible)
+  .mobile-css-carousel__lock-banner.is-focus {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.mobile-css-carousel__focus.is-parked .mobile-css-carousel__lock-banner.is-focus {
+  opacity: 0 !important;
+  transform: translate(-50%, -8px) !important;
+  transition: none !important;
+}
+
+@starting-style {
+  .mobile-css-carousel__focus:has(.mobile-css-carousel__hud.is-visible)
+    .mobile-css-carousel__lock-banner.is-focus {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-css-carousel__lock-banner.is-focus {
+    transition: none;
+  }
+}
+
 /* Device tilt yaw — active pack poster only (side slides stay coverflow-flat). */
 .mobile-css-carousel .swiper-slide-active .mobile-css-carousel__poster {
   transform: rotate3d(0, 1, 0, var(--mobile-pack-tilt-yaw, 0deg));

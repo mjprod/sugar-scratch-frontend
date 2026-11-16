@@ -9,6 +9,7 @@ import {
   type CardKind,
 } from "@/services/cardPlays";
 import { Paths } from "@/routes/Paths";
+import { notifyNotEnoughDiamonds } from "@/components/ui/PackAddedToast";
 
 /**
  * `store` — wallet cannot cover the price (already sent to Store).
@@ -40,6 +41,7 @@ export function useRegisterCardPlayOutcome() {
         return "ok";
       } catch (error) {
         if (isInsufficientPlayError(error)) {
+          notifyNotEnoughDiamonds();
           navigate(Paths.store);
           return "store";
         }

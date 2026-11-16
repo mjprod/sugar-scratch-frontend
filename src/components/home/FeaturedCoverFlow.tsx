@@ -32,6 +32,7 @@ import { type FeaturedPack } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import { isPackInCart, subscribeCart } from "@/services/cart";
 import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
+import { notifyNotEnoughDiamonds } from "@/components/ui/PackAddedToast";
 import {
   loadModels,
   matchModel,
@@ -655,8 +656,7 @@ export function FeaturedCoverFlow({
 
         if (cost > diamonds) {
           holdUnpaidPack(item, target, qty);
-          setNavNotice("Not enough diamonds. Pack saved to My Packs.");
-          window.setTimeout(() => setNavNotice(""), 3200);
+          notifyNotEnoughDiamonds();
           openStore();
           return;
         }
@@ -777,17 +777,13 @@ export function FeaturedCoverFlow({
           "open-pack",
         );
       } catch (error) {
-        const message =
-          error instanceof PurchaseError
-            ? error.kind === "insufficient"
-              ? "Not enough diamonds to buy this pack."
-              : "Purchase failed. Try again."
-            : "Purchase failed. Try again.";
-        setNavNotice(message);
-        window.setTimeout(() => setNavNotice(""), 3200);
         if (error instanceof PurchaseError && error.kind === "insufficient") {
+          notifyNotEnoughDiamonds();
           holdUnpaidPack(item, target, qty);
           openStore();
+        } else {
+          setNavNotice("Purchase failed. Try again.");
+          window.setTimeout(() => setNavNotice(""), 3200);
         }
       } finally {
         buyingRef.current = false;

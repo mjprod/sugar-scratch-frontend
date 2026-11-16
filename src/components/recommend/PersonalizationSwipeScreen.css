@@ -165,7 +165,7 @@ body[data-theme="v8"] .auth7-rec-swipe-continue-label {
 
 body[data-theme="v8"] .auth7-rec-swipe-continue-hint {
   color: oklch(1 0 0 / 0.48);
-  font-size: 0.78rem;
+  font-size: var(--text-body);
   font-weight: 500;
   order: -1;
 }

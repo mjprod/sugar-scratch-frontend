@@ -1080,10 +1080,12 @@ body[data-theme="v8"] .cpv2-theme-motion-toolbar {
   margin-bottom: var(--space-2);
 }
 
-/* Default pink pill Buy Packs? — match Free Play glass height (~42px). */
+/* Default pink pill Buy Packs? — match Free Play glass height (~42px).
+   Always pin right even when Free Play slot is empty. */
 body[data-theme="v8"] .cpv2-theme-motion-buy {
   flex: 0 0 auto;
   min-width: max-content;
+  margin-left: auto;
 }
 
 body[data-theme="v8"] .cpv2-theme-motion-buy .mcp-photo-play-cta-css-wrap {

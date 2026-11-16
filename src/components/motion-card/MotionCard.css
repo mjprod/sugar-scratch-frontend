@@ -825,6 +825,38 @@
   scale: calc(var(--card-w) / 108px);
 }
 
+/*
+ * Theme carousel locked slides — always on (no framer y offset).
+ * Tweak --tease-top / --tease-rotate / tape size here for carousel only.
+ */
+.tease-banner.is-static {
+  --tease-top: calc(var(--card-w) * 31 / 108); /* ~10% higher from 34/108 */
+  --tease-rotate: -30deg;
+  --tease-tape-w: 208px;
+  --tease-tape-h: 36px;
+  top: var(--tease-top);
+  translate: -50% 0;
+  transform: none;
+}
+
+.tease-banner.is-static .tease-banner__tape {
+  width: var(--tease-tape-w);
+  height: var(--tease-tape-h);
+  transform: rotate(var(--tease-rotate));
+}
+
+.tease-banner.is-static .tease-banner__frost {
+  opacity: 1;
+  transform: translate(-50%, -50%) rotate(calc(var(--tease-rotate) * -1));
+}
+
+/* Caption is the floor token — step down by the caption/body ratio. */
+.tease-banner.is-static .tease-banner__copy-row {
+  font-size: calc(
+    var(--text-caption) * var(--text-caption-min) / var(--text-body-min)
+  );
+}
+
 .tease-banner__tape {
   position: relative;
   width: 208px;

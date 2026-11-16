@@ -15,6 +15,12 @@ import {
   ctaButtonPropsFromTemplate,
 } from "@/shared/ui/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { LockStatusBanner } from "@/components/lock-status/LockStatusBanner";
+import {
+  MotionTeaseBanner,
+  type MotionCardTheme,
+} from "@/components/motion-card/MotionCard";
+import "@/components/motion-card/MotionCard.css";
 import {
   addPackToCart,
   isPackInCart,
@@ -129,6 +135,7 @@ function PackSlideHud({
   confirmingAdd,
   slideCta = "buy",
   freePlayMode = false,
+  lockStatus = null,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -137,6 +144,7 @@ function PackSlideHud({
   onBuyConfirmLeaveEnd,
   onConfirmingAddEnd,
   onView,
+  onUnlock,
 }: {
   item: Iteration;
   active: boolean;
@@ -148,6 +156,8 @@ function PackSlideHud({
   slideCta?: "buy" | "view" | "play";
   /** Theme Free Play toggle on — CTA says Free Play (no ◆ price) for every motion. */
   freePlayMode?: boolean;
+  /** Board lock for this motion; null skips banner + Unlock. */
+  lockStatus?: "locked" | "unlocked" | null;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -156,7 +166,9 @@ function PackSlideHud({
   onBuyConfirmLeaveEnd: () => void;
   onConfirmingAddEnd: () => void;
   onView?: (item: Iteration) => void;
+  onUnlock?: (item: Iteration) => void;
 }) {
+  const locked = lockStatus === "locked";
   // Mount hidden, then flip is-visible after paint so CSS entrance transitions run.
   const [revealed, setRevealed] = useState(false);
   const [playCtaEl, setPlayCtaEl] = useState<HTMLDivElement | null>(null);
@@ -223,7 +235,27 @@ function PackSlideHud({
         }}
       >
         <div className="coverflow-buy-pack-cta__primary">
-          {slideCta === "play" ? (
+          {slideCta === "play" && locked ? (
+            <div className="coverflow-compact-play-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
+                height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
+                strokeWidth={1}
+                label="Unlock"
+                costAmount={null}
+                fontSize={14}
+                cornerRadius={999}
+                tabIndex={revealed ? 0 : -1}
+                aria-label={`Unlock ${item.packName || item.name}`}
+                className="coverflow-buy-pack-cta__button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onUnlock?.(item);
+                }}
+              />
+            </div>
+          ) : slideCta === "play" ? (
             <div
               ref={setPlayCtaEl}
               className={[
@@ -649,6 +681,9 @@ export function MobileCssCarousel({
   slideCta = "buy",
   freePlayMode = false,
   ownedFreePlayIds = null,
+  lockedMotionIds = null,
+  motionTheme = "police",
+  onUnlock,
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -687,6 +722,15 @@ export function MobileCssCarousel({
   freePlayMode?: boolean;
   /** Unlocked motions — pink ring while Free Play is on. */
   ownedFreePlayIds?: ReadonlySet<string> | null;
+  /**
+   * Theme board lock set. `null` = no board yet (skip lock UI).
+   * Ids in the set render Locked + Unlock; others get Unlocked.
+   */
+  lockedMotionIds?: ReadonlySet<string> | null;
+  /** Theme tease copy/tint for locked slides (nurse → HANDLE WITH CARE, …). */
+  motionTheme?: MotionCardTheme;
+  /** Locked motion Unlock CTA — usually Buy Packs. */
+  onUnlock?: (item: Iteration) => void;
 }) {
   const useCoverflow = !compact && !flat;
   const swiperRef = useRef<SwiperClass | null>(null);
@@ -698,6 +742,8 @@ export function MobileCssCarousel({
   const onFocusChangeRef = useRef(onFocusChange);
   const onSelectRef = useRef(onSelect);
   const onViewRef = useRef(onView);
+  const onUnlockRef = useRef(onUnlock);
+  const lockedMotionIdsRef = useRef(lockedMotionIds);
   const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
   const [activeIndex, setActiveIndex] = useState(() =>
@@ -742,6 +788,8 @@ export function MobileCssCarousel({
   onFocusChangeRef.current = onFocusChange;
   onSelectRef.current = onSelect;
   onViewRef.current = onView;
+  onUnlockRef.current = onUnlock;
+  lockedMotionIdsRef.current = lockedMotionIds;
   buyDisabledRef.current = buyDisabled;
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
@@ -1096,7 +1144,18 @@ export function MobileCssCarousel({
       }
       return;
     }
-    const src = itemsRef.current[activeIndexRef.current]?.videoUrl?.trim() || "";
+    const activeItem = itemsRef.current[activeIndexRef.current];
+    const locked = Boolean(
+      lockedMotionIdsRef.current?.has(activeItem?.id ?? ""),
+    );
+    // Locked motions stay on the desaturated still — no live trailer.
+    if (locked) {
+      releaseClaimedDecoder(video);
+      focus?.classList.remove("is-ready");
+      syncLiveClass();
+      return;
+    }
+    const src = activeItem?.videoUrl?.trim() || "";
     if (!src) {
       releaseClaimedDecoder(video);
       focus?.classList.remove("is-ready");
@@ -1120,6 +1179,13 @@ export function MobileCssCarousel({
     syncLiveClass();
     void video.play().catch(() => {});
   }, [layoutFocus, syncLiveClass]);
+
+  // Board lock status can arrive after first paint — drop live trailer if locked.
+  useEffect(() => {
+    if (!pageVisibleRef.current || !heroVisibleRef.current) return;
+    if (parkedRef.current) return;
+    attachActiveVideo();
+  }, [attachActiveVideo, lockedMotionIds]);
 
   const syncPlayback = useCallback(
     (next: number) => {
@@ -1690,14 +1756,17 @@ export function MobileCssCarousel({
             void pocketTick;
             const near = Math.abs(index - activeIndex) <= 2;
             const ownedFreePlay = Boolean(ownedFreePlayIds?.has(item.id));
+            const locked = Boolean(lockedMotionIds?.has(item.id));
             return (
               <SwiperSlide key={item.id}>
                 <div
-                  className={
-                    ownedFreePlay
-                      ? "mobile-css-carousel__pack is-owned-free-play"
-                      : "mobile-css-carousel__pack"
-                  }
+                  className={[
+                    "mobile-css-carousel__pack",
+                    ownedFreePlay ? "is-owned-free-play" : "",
+                    locked ? "is-locked" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
                   {item.posterArtBase ? (
                     <picture className="mobile-css-carousel__poster-art">
@@ -1737,6 +1806,23 @@ export function MobileCssCarousel({
                         const swiper = swiperRef.current;
                         if (swiper) markReady(swiper);
                       }}
+                    />
+                  ) : null}
+                  {locked ? (
+                    <div
+                      className="mobile-css-carousel__lock-shade"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  {locked ? (
+                    <MotionTeaseBanner
+                      theme={motionTheme}
+                      posterUrl={
+                        item.posterUrl ||
+                        (item.posterArtBase
+                          ? `${item.posterArtBase}.webp`
+                          : "")
+                      }
                     />
                   ) : null}
                   {flat && (slideCta === "view" || slideCta === "play") ? (
@@ -1799,6 +1885,23 @@ export function MobileCssCarousel({
               }}
             />
           </div>
+          {/* Top of focus rect — fades with HUD is-visible (same CTA entrance). */}
+          {lockedMotionIds != null &&
+          slideCta === "play" &&
+          items[activeIndex] ? (
+            <div
+              key={`lock-${items[activeIndex].id}`}
+              className="mobile-css-carousel__lock-banner is-focus"
+            >
+              <LockStatusBanner
+                status={
+                  lockedMotionIds.has(items[activeIndex].id)
+                    ? "locked"
+                    : "unlocked"
+                }
+              />
+            </div>
+          ) : null}
           {/* Flat profile: View Theme lives on each pack plate, not the focus HUD. */}
           {compact || flat ? null : items[activeIndex] ? (
             <PackSlideHud
@@ -1815,12 +1918,20 @@ export function MobileCssCarousel({
               confirmingAdd={confirmingAdd}
               slideCta={slideCta}
               freePlayMode={freePlayMode}
+              lockStatus={
+                lockedMotionIds != null && slideCta === "play"
+                  ? lockedMotionIds.has(items[activeIndex].id)
+                    ? "locked"
+                    : "unlocked"
+                  : null
+              }
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}
               onBuyQuantityChange={setBuyQuantity}
               onAddToPocket={addActiveToPocket}
               onView={(pack) => onViewRef.current?.(pack)}
+              onUnlock={(pack) => onUnlockRef.current?.(pack)}
               onBuyConfirmLeaveEnd={() => {
                 buyConfirmLeavingRef.current = false;
                 setBuyConfirmLeaving(false);
