@@ -580,6 +580,11 @@
   color: rgb(255 255 255 / 0.5);
 }
 
+.mcp-photo-play-cta-css--cta.is-disabled .mcp-photo-play-cta-css__leading,
+.mcp-photo-play-cta-css--cta:disabled .mcp-photo-play-cta-css__leading {
+  filter: saturate(0) brightness(0.4) contrast(1.5);
+}
+
 /*
  * Color variants (lab + production).
  * Default / pink = base .mcp-photo-play-cta-css plate.

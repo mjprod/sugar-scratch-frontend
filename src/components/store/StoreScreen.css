@@ -1,6 +1,7 @@
 /* theme.css rules owned by StorePage (lazy route CSS). */
 body[data-theme="v8"] .hub-section-label--redeem {
   color: oklch(0.811 0.101 293.57);
+  font-size: var(--text-body);
 }
 
 /* -------- Level 3: Redeem utility -------- */

@@ -42,6 +42,12 @@ import {
 } from "@/components/photo-gateway/PhotoGateway";
 import "@/components/pack-preview/PackPreview.css";
 import {
+  CoinPackCard,
+  DiamondPackCard,
+  type CurrencyPackCurrency,
+} from "@/components/currency-pack-card/CurrencyPackCard";
+import { COINS_PER_DIAMOND, type StoreBadge } from "@/services/store";
+import {
   loadModels,
   modelAvatarUrl,
   modelDisplayName,
@@ -112,6 +118,13 @@ export function ComponentLabPage() {
   const [sliderCtaVariant, setSliderCtaVariant] =
     useState<LabCssCtaVariant>("default");
   const [dangerCtaDisabled, setDangerCtaDisabled] = useState(false);
+  const [packCurrency, setPackCurrency] =
+    useState<CurrencyPackCurrency>("diamonds");
+  const [packBadge, setPackBadge] = useState<StoreBadge | "none">("Best Value");
+  const [packAmount, setPackAmount] = useState(1200);
+  const [packPrice, setPackPrice] = useState("$19.99");
+  const [packFeatured, setPackFeatured] = useState(true);
+  const [packProcessing, setPackProcessing] = useState(false);
   const [holderPreview, setHolderPreview] = useState<{
     name: string;
     place: string;
@@ -298,6 +311,129 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Currency pack card</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Store cash packs ·{" "}
+                <code className="text-ink-secondary">DiamondPackCard</code> /{" "}
+                <code className="text-ink-secondary">CoinPackCard</code> in{" "}
+                <code className="text-ink-secondary">
+                  currency-pack-card/CurrencyPackCard.tsx
+                </code>
+                .
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-full bg-surface-muted p-0.5">
+                {(
+                  [
+                    ["diamonds", "Diamonds"],
+                    ["coins", "Coins"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPackCurrency(value)}
+                    className={[
+                      "rounded-full px-3 py-1 text-[12px] font-medium transition",
+                      packCurrency === value
+                        ? "bg-white text-black"
+                        : "text-ink-secondary hover:text-ink",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-[12px]">
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Badge
+              <select
+                value={packBadge}
+                onChange={(event) =>
+                  setPackBadge(event.target.value as StoreBadge | "none")
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              >
+                <option value="none">None</option>
+                <option value="Popular">Popular</option>
+                <option value="Best Value">Best Value</option>
+                <option value="Bonus">Bonus</option>
+                <option value="New">New</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Amount
+              <input
+                type="number"
+                min={1}
+                value={packAmount}
+                onChange={(event) =>
+                  setPackAmount(Number(event.target.value) || 0)
+                }
+                className="w-28 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Price
+              <input
+                type="text"
+                value={packPrice}
+                onChange={(event) => setPackPrice(event.target.value)}
+                className="w-28 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              />
+            </label>
+            <label className="flex items-end gap-2 pb-2 text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={packFeatured}
+                onChange={(event) => setPackFeatured(event.target.checked)}
+              />
+              Featured
+            </label>
+            <label className="flex items-end gap-2 pb-2 text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={packProcessing}
+                onChange={(event) => setPackProcessing(event.target.checked)}
+              />
+              Processing
+            </label>
+          </div>
+
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.08_0_0)] px-6 py-12">
+            {packCurrency === "coins" ? (
+              <CoinPackCard
+                amount={packAmount}
+                priceLabel={(packAmount * COINS_PER_DIAMOND).toLocaleString(
+                  "en-US",
+                )}
+                badge={packBadge === "none" ? null : packBadge}
+                featured={packFeatured}
+                processing={packProcessing}
+                iconsAnimated
+                onBuy={() => undefined}
+              />
+            ) : (
+              <DiamondPackCard
+                amount={packAmount}
+                priceLabel={packPrice}
+                badge={packBadge === "none" ? null : packBadge}
+                featured={packFeatured}
+                processing={packProcessing}
+                iconsAnimated
+                onBuy={() => undefined}
+              />
+            )}
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

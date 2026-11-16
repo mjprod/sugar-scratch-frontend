@@ -2,8 +2,9 @@ import { useCallback, useEffect } from "react";
 import { useMotionOptional } from "@/features/collection/hooks/useMotion";
 import { mcpCtaGradAngleFromMotion } from "@/components/creator/mcpCtaGradMotion";
 
-const WRAP_SEL = ".mcp-photo-play-cta-css-wrap";
-/** Soft follow — lower = laggy. Shared by every CSS CTA wrap. */
+const WRAP_SEL =
+  ".mcp-photo-play-cta-css-wrap, .currency-pack-card__plate";
+/** Soft follow — lower = laggy. Shared by every CSS CTA wrap + pack rim. */
 const LERP = 0.05;
 
 function clearMotionGrad(node: HTMLElement) {
@@ -12,7 +13,7 @@ function clearMotionGrad(node: HTMLElement) {
 }
 
 /**
- * Drives `--mcp-cta-grad-angle` on every `.mcp-photo-play-cta-css-wrap` while
+ * Drives `--mcp-cta-grad-angle` on CSS CTA wraps + currency pack plates while
  * Profile tilt is on. Mount once under MotionProvider.
  */
 export function McpCtaGradMotionRoot() {

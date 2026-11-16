@@ -20,6 +20,11 @@ type DiamondLottieProps = {
   animated?: boolean;
   extraScale?: number;
   autoResize?: boolean;
+  /**
+   * DotLottie freezes when the canvas leaves the viewport. 3D parents
+   * (coverflow / device tilt) can lie about intersection — pass false there.
+   */
+  freezeOnOffscreen?: boolean;
   /** Skip the still mark and open the Lottie gate immediately. */
   eager?: boolean;
   dotLottieRefCallback?: (player: DotLottie | null) => void;
@@ -54,6 +59,7 @@ export function DiamondLottie({
   animated = false,
   extraScale = 1,
   autoResize = true,
+  freezeOnOffscreen = true,
   eager = false,
   dotLottieRefCallback,
   style,
@@ -88,7 +94,11 @@ export function DiamondLottie({
           autoplay={autoplay}
           loop={loop}
           speed={speed}
-          renderConfig={lottieRenderConfig({ extraScale, autoResize })}
+          renderConfig={lottieRenderConfig({
+            extraScale,
+            autoResize,
+            freezeOnOffscreen,
+          })}
           dotLottieRefCallback={dotLottieRefCallback}
           style={{ width: "100%", height: "100%" }}
         />

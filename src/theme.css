@@ -8319,7 +8319,7 @@ body[data-theme="v8"] .home-v2 .player-welcome-bar {
   border: 1px solid #660934;
   background-image:
     linear-gradient(
-      180deg,
+      45deg,
       rgba(170, 0, 79, 0.41) 0%,
       rgba(68, 0, 32, 0.175) 23.558%,
       rgba(0, 0, 0, 0.5) 50.001%,
@@ -8635,7 +8635,8 @@ body[data-theme="v8"] .home-v2 .explore-creators-viewport {
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
-body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+body[data-theme="v8"] .home-v2 .explore-creators-arrow,
+body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow {
   --coverflow-chevron-surface: linear-gradient(
     180deg,
     oklch(0.22 0 0 / 0.12) 0%,
@@ -8673,8 +8674,13 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow {
     opacity 160ms ease;
 }
 
+body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow {
+  z-index: 12;
+}
+
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow.glass.glass-surface,
-body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
+body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface,
+body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow.glass.glass-surface {
   --glass-bg-opacity: 0;
   background: var(--coverflow-chevron-surface);
   border: 1px solid oklch(1 0 0 / 0.05);
@@ -8686,7 +8692,8 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
 /* iOS: tw-glass displacement drops — same black frost as Collect .mc-popular-arrow. */
 @supports (-webkit-touch-callout: none) {
   body[data-theme="v8"] .home-v2 .continue-collecting-arrow.glass.glass-surface,
-  body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface {
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow.glass.glass-surface,
+  body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow.glass.glass-surface {
     --tw-glass-filter: ;
     --tw-glass-blur: 8px;
     --tw-backdrop-blur: blur(8px);
@@ -8711,13 +8718,15 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow.is-next {
 
 @media (max-width: 820px) {
   body[data-theme="v8"] .home-v2 .continue-collecting-arrow,
-  body[data-theme="v8"] .home-v2 .explore-creators-arrow {
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow,
+  body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow {
     width: 5rem;
     height: 5rem;
   }
 
   body[data-theme="v8"] .home-v2 .continue-collecting-arrow svg,
-  body[data-theme="v8"] .home-v2 .explore-creators-arrow svg {
+  body[data-theme="v8"] .home-v2 .explore-creators-arrow svg,
+  body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow svg {
     width: 2.5rem;
     height: 2.5rem;
   }
@@ -8753,7 +8762,8 @@ body[data-theme="v8"] .mc-popular-arrow::after {
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow:hover:not(:disabled),
-body[data-theme="v8"] .home-v2 .explore-creators-arrow:hover:not(:disabled) {
+body[data-theme="v8"] .home-v2 .explore-creators-arrow:hover:not(:disabled),
+body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow:hover:not(:disabled) {
   border-color: oklch(1 0 0 / 0.1);
   background: linear-gradient(
     180deg,
@@ -8766,7 +8776,8 @@ body[data-theme="v8"] .home-v2 .explore-creators-arrow:hover:not(:disabled) {
 }
 
 body[data-theme="v8"] .home-v2 .continue-collecting-arrow:disabled,
-body[data-theme="v8"] .home-v2 .explore-creators-arrow:disabled {
+body[data-theme="v8"] .home-v2 .explore-creators-arrow:disabled,
+body[data-theme="v8"] .home-v2 .mobile-css-carousel-stage .mc-popular-arrow:disabled {
   opacity: 0.32;
   cursor: default;
 }

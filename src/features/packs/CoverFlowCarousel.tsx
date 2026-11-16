@@ -4660,7 +4660,9 @@ isMobile={isMobileViewportActive}
           </div>
         ) : null}
 
-        {!isMobileViewportActive && !revealMode ? (
+        {/* Mobile home uses CSS carousel arrows; WebGL coverflow (creator packs /
+            desktop / cart) still needs these — don't hide on narrow viewports. */}
+        {!revealMode ? (
           <div className="coverflow-nav">
             <button
               type="button"

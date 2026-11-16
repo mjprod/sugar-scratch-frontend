@@ -379,11 +379,11 @@ p {
 }
 
 .coverflow-nav-chevron.is-left {
-  left: 0.75rem;
+  left: 4px;
 }
 
 .coverflow-nav-chevron.is-right {
-  right: 0.75rem;
+  right: 4px;
 }
 
 .coverflow-nav-chevron:hover:not(:disabled) {

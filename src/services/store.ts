@@ -11,6 +11,9 @@ export type StoreBadge =
 
 export type StoreProductKind = "rewarded-ad" | "diamonds" | "coins";
 
+/** Flat Coin Swap rate for pack carousel CTAs (100 Coins → 1 Diamond). */
+export const COINS_PER_DIAMOND = 100;
+
 /** Soft-currency exchange — intentionally worse $/Diamond than cash at higher tiers (GD-AC22). */
 export const COIN_EXCHANGE_OPTIONS = [
   { id: "x100", diamonds: 100, coins: 100 },

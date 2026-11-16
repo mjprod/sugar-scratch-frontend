@@ -1062,10 +1062,6 @@
 				    bottom: calc(12.5dvh + env(safe-area-inset-bottom, 0px));
 			  }
 
-  .coverflow-nav-chevron {
-    display: none;
-  }
-
   .coverflow-stage {
     height: 100%;
     max-height: none;

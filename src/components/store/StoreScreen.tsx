@@ -364,7 +364,6 @@ export function StoreScreen({
           <GetDiamondsCatalog
             products={load.products}
             coinBalance={coinBalance}
-            adClaimsToday={adClaimsToday}
             busy={busy}
             activeProductId={activeProductId}
             flowStep={flow.step}
@@ -453,10 +452,8 @@ function StoreSkeleton() {
       <div className="get-diamonds-packages">
         <div className="mx-auto h-[26rem] w-[min(72vw,17.5rem)] animate-pulse rounded-[22px] bg-white/[0.06]" />
       </div>
-      <div className="get-diamonds-hero-band get-diamonds-hero-band--art min-h-[18rem]" />
-      <div className="get-diamonds-earn">
-        <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />
-        <div className="h-[220px] animate-pulse rounded-[14px] bg-white/[0.06]" />
+      <div className="get-diamonds-hero-band get-diamonds-hero-band--art min-h-[18rem]">
+        <div className="get-diamonds-hero-band__bg" />
       </div>
     </div>
   );
