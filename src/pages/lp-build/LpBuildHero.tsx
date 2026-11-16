@@ -2,7 +2,8 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { openDeferredLotties } from "@/lib/lottie/DeferredLottie";
-import { foilsFromModel, loadModels } from "@/services/models";
+import { landingPageModelId } from "@/pages/lp-build/lpModel";
+import { foilsFromModel, loadModels, modelDisplayName } from "@/services/models";
 
 function toTitleCase(value: string) {
   return value
@@ -60,14 +61,19 @@ export function LpBuildHero({
   parallax?: number;
 }) {
   const [searchParams] = useSearchParams();
-  const modelId =
-    searchParams.get("model")?.trim() ||
-    searchParams.get("username")?.trim() ||
-    "julianaval";
-  const username = toTitleCase(
-    searchParams.get("username")?.trim() || modelId || "Hey",
+  const modelId = landingPageModelId(searchParams);
+  const [username, setUsername] = useState(() =>
+    toTitleCase(
+      (searchParams.get("username")?.trim() || modelId || "Hey").replace(
+        /_/g,
+        " ",
+      ),
+    ),
   );
-  const [face, setFace] = useState<{ src: string; poster?: string } | null>(
+  const [front, setFront] = useState<{ src: string; poster?: string } | null>(
+    null,
+  );
+  const [back, setBack] = useState<{ src: string; poster?: string } | null>(
     null,
   );
 
@@ -85,9 +91,21 @@ export function LpBuildHero({
           (entry) =>
             (entry.id ?? "").toLowerCase() === modelId.toLowerCase(),
         );
-      const foil = model ? foilsFromModel(model)[0] : null;
-      if (!foil?.videoUrl) return;
-      setFace({ src: foil.videoUrl, poster: foil.posterUrl });
+      if (!model) return;
+      setUsername(modelDisplayName(model));
+      const foils = foilsFromModel(model).filter((foil) => foil.videoUrl);
+      const primary = foils[0] ?? null;
+      const secondary = foils[1] ?? primary;
+      setFront(
+        primary
+          ? { src: primary.videoUrl, poster: primary.posterUrl }
+          : null,
+      );
+      setBack(
+        secondary
+          ? { src: secondary.videoUrl, poster: secondary.posterUrl }
+          : null,
+      );
     });
     return () => {
       cancelled = true;
@@ -114,22 +132,22 @@ export function LpBuildHero({
             <span>We'd love to put you in the game!</span>
           </p>
         </div>
-        {face ? (
+        {front && back ? (
           <div
             className="lp-build-pack-stack"
             style={{ opacity: Math.max(0, 1 - parallax / 420) }}
           >
             <PackFace
-              src={face.src}
-              poster={face.poster}
+              src={back.src}
+              poster={back.poster}
               className="lp-build-pack--back"
               style={{
                 transform: `translate(-50%, -50%) translateX(${10 - (parallax / 420) * 10}%) rotate(${9 - (parallax / 420) * 9}deg)`,
               }}
             />
             <PackFace
-              src={face.src}
-              poster={face.poster}
+              src={front.src}
+              poster={front.poster}
               className="lp-build-pack--front"
               style={{
                 transform: `translate(0, 0) translateX(${-15 + (parallax / 420) * 15}%) rotate(${-9 + (parallax / 420) * 9}deg)`,
