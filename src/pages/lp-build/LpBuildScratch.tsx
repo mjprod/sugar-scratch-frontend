@@ -95,9 +95,18 @@ export function LpBuildScratch({ onFinish }: { onFinish: () => void }) {
     });
   }, [onFinish]);
 
-  const scratchModel = searchParams.get("model")?.trim() || owner || MODEL;
+  // ScratchPrototype reads freeplay on its first render, and its effects run
+  // before the ones above. Mount only once freeplay, model, and the settled
+  // card are already in the URL, or a signed-in visitor starts a paid hand.
+  const scratchModel = searchParams.get("model")?.trim() || "";
+  const freePlayReady = searchParams.get("freeplay") === "1";
   const scratchCard = playCard || (owner ? "" : card);
-  if (!scratchCard || (owner && playCard !== card)) {
+  if (
+    !freePlayReady ||
+    !scratchModel ||
+    !scratchCard ||
+    (owner && playCard !== card)
+  ) {
     return (
       <div className="app-shell app-shell--game">
         <div className="stage-game" />

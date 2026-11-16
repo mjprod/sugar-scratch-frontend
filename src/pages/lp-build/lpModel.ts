@@ -24,8 +24,11 @@ export function pickLandingPlayCard(
   owner: string,
   requested: string,
 ): string {
+  const ownerId = owner.trim().toLowerCase();
   const own = cards
-    .filter((card) => (card.model_id ?? "").trim() === owner)
+    .filter(
+      (card) => (card.model_id ?? "").trim().toLowerCase() === ownerId,
+    )
     .sort(
       (a, b) =>
         (a.sort_order ?? 0) - (b.sort_order ?? 0) || a.id.localeCompare(b.id),
