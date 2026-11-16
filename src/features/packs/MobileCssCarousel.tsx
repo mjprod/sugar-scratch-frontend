@@ -704,6 +704,7 @@ export function MobileCssCarousel({
     indexForSelectedId(items, selectedId),
   );
   const activeIndexRef = useRef(indexForSelectedId(items, selectedId));
+  const holdingRef = useRef(false);
   const selectedIdRef = useRef(selectedId);
   selectedIdRef.current = selectedId;
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -758,6 +759,8 @@ export function MobileCssCarousel({
   // Duration 0 avoids stacking transitions that freeze the main thread while scrubbing.
   useEffect(() => {
     if (!selectedId) return;
+    // Arrow-hold owns the index; don't snap back mid-hold (coverflow end bounce).
+    if (holdingRef.current) return;
     const index = items.findIndex((item) => item.id === selectedId);
     if (index < 0) return;
     if (index === activeIndexRef.current) return;
@@ -1054,8 +1057,18 @@ export function MobileCssCarousel({
     if (!pack) return;
     const shellRect = shell.getBoundingClientRect();
     const packRect = pack.getBoundingClientRect();
-    // Skip mid-swipe transform snapshots (iOS ~40px flash) — keep last good box.
-    if (!shouldApplyFocusRect(packRect.height, pack.offsetHeight)) return;
+    // Skip mid-swipe transform snapshots (iOS ~40px / still-rotated AABB) — keep last good box.
+    if (
+      !shouldApplyFocusRect(
+        packRect.height,
+        pack.offsetHeight,
+        0.55,
+        packRect.width,
+        pack.offsetWidth,
+      )
+    ) {
+      return;
+    }
     // Owned free-play ring is on the pack — inset so live video does not cover it.
     const inset = pack.classList.contains("is-owned-free-play") ? 2 : 0;
     focus.style.left = `${packRect.left - shellRect.left + inset}px`;
@@ -1404,18 +1417,28 @@ export function MobileCssCarousel({
 
   const holdStartedAt = useRef(0);
   const holdTarget = useRef(0);
-  const holdingRef = useRef(false);
 
   const holdSlideSpeed = () => {
     const t = Date.now() - holdStartedAt.current;
-    if (t < 80) return 360;
-    return Math.max(0, Math.round(300 - (t - 80) * 0.85));
+    // Coverflow needs a floor — speed 0 stacks 3D transitions and bounces at the ends.
+    const min = useCoverflow ? 160 : 0;
+    if (t < 80) return Math.max(min, 360);
+    return Math.max(min, Math.round(300 - (t - 80) * 0.85));
   };
 
   const stepHold = (dir: -1 | 1) => {
     const swiper = swiperRef.current;
     if (!swiper) return;
     const last = itemsRef.current.length - 1;
+    // Coverflow: one in-flight slide only, always from Swiper's real index.
+    if (useCoverflow) {
+      if (swiper.animating) return;
+      const current = swiper.activeIndex;
+      const dest = Math.max(0, Math.min(last, current + dir));
+      if (dest === current) return;
+      swiper.slideTo(dest, holdSlideSpeed());
+      return;
+    }
     const dest = Math.max(0, Math.min(last, holdTarget.current + dir));
     if (dest === holdTarget.current) return;
     holdTarget.current = dest;
@@ -1424,6 +1447,20 @@ export function MobileCssCarousel({
 
   const holdPrev = useHoldRepeat(() => stepHold(-1));
   const holdNext = useHoldRepeat(() => stepHold(1));
+
+  const endArrowHold = (
+    hold: ReturnType<typeof useHoldRepeat>,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    holdingRef.current = false;
+    hold.onPointerUp(event);
+    // Don't unpark mid-coverflow — CTA would show on a tilted AABB then snap.
+    // transitionEnd (or a settled pointerup) brings the HUD back.
+    const swiper = swiperRef.current;
+    if (swiper && !swiper.destroyed && swiper.animating) return;
+    setParked(false);
+    attachActiveVideo();
+  };
 
   const bindArrowHold = (hold: ReturnType<typeof useHoldRepeat>) => ({
     ...hold,
@@ -1437,16 +1474,10 @@ export function MobileCssCarousel({
       hold.onPointerDown(event);
     },
     onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      holdingRef.current = false;
-      hold.onPointerUp(event);
-      setParked(false);
-      attachActiveVideo();
+      endArrowHold(hold, event);
     },
     onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      holdingRef.current = false;
-      hold.onPointerCancel(event);
-      setParked(false);
-      attachActiveVideo();
+      endArrowHold(hold, event);
     },
   });
 
@@ -1491,7 +1522,15 @@ export function MobileCssCarousel({
       )}
       <div
         ref={shellRef}
-        className="mobile-css-carousel-shell"
+        className={[
+          "mobile-css-carousel-shell",
+          items.length > 1 && activeIndex > 0 ? "has-fade-left" : "",
+          items.length > 1 && activeIndex < items.length - 1
+            ? "has-fade-right"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onPointerUp={handleShellPointerUp}
       >
         {/* Fixed behind the track — does not scroll with slides. */}
@@ -1736,28 +1775,30 @@ export function MobileCssCarousel({
           })}
         </Swiper>
         <div ref={focusRef} className="mobile-css-carousel__focus is-parked">
-          <video
-            ref={liveVideoRef}
-            className="mobile-css-carousel__video"
-            muted
-            loop
-            playsInline
-            preload="none"
-            aria-hidden
-            onLoadedData={() => {
-              if (parkedRef.current) return;
-              layoutFocus();
-              const focus = focusRef.current;
-              // Don't reveal until the focus box is a real pack size (iOS).
-              if (focus && focus.offsetHeight > 0 && focus.offsetHeight < 80) {
-                return;
-              }
-              focus?.classList.add("is-ready");
-              syncLiveClass();
-              const swiper = swiperRef.current;
-              if (swiper) markReady(swiper);
-            }}
-          />
+          <div className="mobile-css-carousel__focus-media">
+            <video
+              ref={liveVideoRef}
+              className="mobile-css-carousel__video"
+              muted
+              loop
+              playsInline
+              preload="none"
+              aria-hidden
+              onLoadedData={() => {
+                if (parkedRef.current) return;
+                layoutFocus();
+                const focus = focusRef.current;
+                // Don't reveal until the focus box is a real pack size (iOS).
+                if (focus && focus.offsetHeight > 0 && focus.offsetHeight < 80) {
+                  return;
+                }
+                focus?.classList.add("is-ready");
+                syncLiveClass();
+                const swiper = swiperRef.current;
+                if (swiper) markReady(swiper);
+              }}
+            />
+          </div>
           {/* Flat profile: View Theme lives on each pack plate, not the focus HUD. */}
           {compact || flat ? null : items[activeIndex] ? (
             <PackSlideHud
@@ -1789,27 +1830,27 @@ export function MobileCssCarousel({
           ) : null}
         </div>
         {/* After the track so chevrons paint above packs / live video. */}
-        {(compact || flat) && items.length > 1 ? (
+        {items.length > 1 ? (
           <>
             <button
               type="button"
-              className="mc-popular-arrow is-prev"
+              className="mc-popular-arrow is-prev glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label={
                 slideCta === "view" ? "Previous themes" : "Previous packs"
               }
               disabled={activeIndex <= 0}
               {...bindArrowHold(holdPrev)}
             >
-              <ChevronLeft size={18} aria-hidden />
+              <ChevronLeft className="size-5" aria-hidden />
             </button>
             <button
               type="button"
-              className="mc-popular-arrow is-next"
+              className="mc-popular-arrow is-next glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
               aria-label={slideCta === "view" ? "Next themes" : "Next packs"}
               disabled={activeIndex >= items.length - 1}
               {...bindArrowHold(holdNext)}
             >
-              <ChevronRight size={18} aria-hidden />
+              <ChevronRight className="size-5" aria-hidden />
             </button>
           </>
         ) : null}

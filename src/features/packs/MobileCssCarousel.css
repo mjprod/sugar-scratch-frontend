@@ -43,6 +43,56 @@
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  /* Scroll-hint fades — same family as Get Diamonds / Explore Creators. */
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.mobile-css-carousel-shell.has-fade-left {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 100%
+  );
+}
+
+.mobile-css-carousel-shell.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    #000 0,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+}
+
+.mobile-css-carousel-shell.has-fade-left.has-fade-right {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 1.75rem,
+    #000 calc(100% - 1.75rem),
+    transparent 100%
+  );
 }
 
 .mobile-css-carousel.swiper,
@@ -115,13 +165,21 @@
 
 /*
  * Live <video> stays outside Swiper's 3D coverflow tree (iOS decoder).
- * Tilt the video node itself — not a 3D ancestor wrapping it.
+ * Perspective lives only on the media wrapper — putting it on `.focus` made the
+ * HUD (translateZ) project off-axis while left-chevron coverflow settled, then snap.
  */
 .mobile-css-carousel__focus {
   position: absolute;
   z-index: 6;
   /* Visible so Buy confirm can paint past the pack; video is sized to the box. */
   overflow: visible;
+  pointer-events: none;
+}
+
+.mobile-css-carousel__focus-media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
   pointer-events: none;
   perspective: 900px;
 }
@@ -144,7 +202,8 @@
   opacity: 0 !important;
   pointer-events: none !important;
   filter: none !important;
-  transform: translate3d(0, 8px, 1px) !important;
+  transform: translateY(8px) !important;
+  transform-origin: center center !important;
   transition: none !important;
   animation: none !important;
 }
@@ -199,7 +258,8 @@
   z-index: 30;
   touch-action: manipulation;
   width: max-content;
-  transform: translate3d(-50%, 0, 40px);
+  /* 2D center only — no translateZ (avoids perspective foreshortening). */
+  transform: translate(-50%, 0);
   pointer-events: none;
   transform-style: flat;
   -webkit-transform-style: flat;
@@ -209,7 +269,7 @@
 .mobile-css-carousel__hud.coverflow-active-stack--html.is-visible {
   opacity: 1;
   filter: none;
-  transform: translate3d(-50%, 0, 40px);
+  transform: translate(-50%, 0);
   transition: none;
 }
 
@@ -225,7 +285,9 @@
   pointer-events: none;
   opacity: 0;
   filter: none;
-  transform: translate3d(0, 8px, 1px);
+  /* Beat packs-entry translateY + center-bottom origin (skewed under focus perspective). */
+  transform: translateY(8px);
+  transform-origin: center center;
   animation: none;
   transition:
     opacity 280ms ease-out,
@@ -238,7 +300,8 @@
   pointer-events: auto;
   opacity: 1;
   filter: none;
-  transform: translate3d(0, 0, 1px);
+  transform: translateY(0);
+  transform-origin: center center;
   animation: none;
   transition-delay: 0s;
 }
@@ -247,7 +310,7 @@
   .mobile-css-carousel__hud.is-visible .coverflow-buy-pack-cta,
   .mobile-css-carousel__hud.coverflow-active-stack.is-visible .coverflow-buy-pack-cta {
     opacity: 0;
-    transform: translate3d(0, 8px, 1px);
+    transform: translateY(8px);
   }
 }
 

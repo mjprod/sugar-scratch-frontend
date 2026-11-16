@@ -106,18 +106,37 @@ function cardToIteration(
 /** Slot-machine roll when the focused motion card’s label changes. */
 function PhotoCardLabelRoll({ label }: { label: string }) {
   const shownRef = useRef(label);
+  const targetRef = useRef(label);
+  const rollingRef = useRef(false);
   const [shown, setShown] = useState(label);
   const [incoming, setIncoming] = useState<string | null>(null);
   const [rollKey, setRollKey] = useState(0);
 
+  targetRef.current = label;
+
+  const settleAtRest = (landed: string) => {
+    rollingRef.current = false;
+    shownRef.current = landed;
+    setShown(landed);
+    setIncoming(null);
+    // Remount at rest — avoids one frame of a single line stuck at translateY(-50%).
+    setRollKey((key) => key + 1);
+  };
+
+  const finishRoll = () => {
+    if (!rollingRef.current) return;
+    // Always land on latest focus — never chain remounts (those looked like cancels).
+    settleAtRest(targetRef.current || shownRef.current);
+  };
+
   useEffect(() => {
     if (!label) {
+      rollingRef.current = false;
       shownRef.current = "";
       setShown("");
       setIncoming(null);
       return;
     }
-    if (label === shownRef.current) return;
     if (!shownRef.current) {
       shownRef.current = label;
       setShown(label);
@@ -127,14 +146,26 @@ function PhotoCardLabelRoll({ label }: { label: string }) {
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
-      shownRef.current = label;
-      setShown(label);
-      setIncoming(null);
+      settleAtRest(label);
       return;
     }
+    if (rollingRef.current) {
+      // Keep the CSS animation running; only swap destination text.
+      setIncoming(label);
+      return;
+    }
+    if (label === shownRef.current) return;
+    rollingRef.current = true;
     setIncoming(label);
     setRollKey((key) => key + 1);
   }, [label]);
+
+  // Failsafe if animationend is skipped (must exceed CSS duration).
+  useEffect(() => {
+    if (!incoming) return;
+    const timeout = window.setTimeout(() => finishRoll(), 1000);
+    return () => window.clearTimeout(timeout);
+  }, [incoming, rollKey]);
 
   if (!shown && !label) return null;
 
@@ -152,10 +183,7 @@ function PhotoCardLabelRoll({ label }: { label: string }) {
           }
           onAnimationEnd={(event) => {
             if (event.animationName !== "mcp-photos-title-card-roll") return;
-            if (!incoming) return;
-            shownRef.current = incoming;
-            setShown(incoming);
-            setIncoming(null);
+            finishRoll();
           }}
         >
           <span className="mcp-photos-title-card-line">{shown || label}</span>
