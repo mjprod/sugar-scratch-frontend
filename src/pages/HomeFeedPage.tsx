@@ -1,14 +1,16 @@
 import "@/components/home/HomeFeedScreen.css";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/useAuth";
 import { HomeFeedScreen } from "@/components/home/HomeFeedScreen";
 import { WelcomeGiftOverlay } from "@/components/welcome/WelcomeGiftOverlay";
+import { Paths } from "@/routes/Paths";
 
 export function HomeFeedPage() {
+  const navigate = useNavigate();
   const {
     resumeLikeId,
     consumeResumeLike,
-    addToCart,
     requireAuth,
     openCreator,
     authed,
@@ -21,15 +23,11 @@ export function HomeFeedPage() {
         active={!welcomeOpen}
         resumeLikeId={resumeLikeId}
         onResumeLikeConsumed={consumeResumeLike}
-        onBuyPack={(pack) =>
-          addToCart({
-            packId: pack.packId,
-            packName: pack.packName,
-            creator: pack.creator,
-            characterId: pack.packId,
-            price: pack.price,
-          })
-        }
+        onBuyPack={(pack) => {
+          const creatorId = pack.creatorId.trim();
+          if (!creatorId) return;
+          navigate(Paths.creatorPacks(creatorId));
+        }}
         onLikeAttempt={(id) => {
           if (authed) return true;
           requireAuth({ type: "like", feedItemId: id });

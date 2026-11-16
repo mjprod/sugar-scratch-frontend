@@ -364,6 +364,7 @@ export function StoreScreen({
           <GetDiamondsCatalog
             products={load.products}
             coinBalance={coinBalance}
+            adClaimsToday={adClaimsToday}
             busy={busy}
             activeProductId={activeProductId}
             flowStep={flow.step}

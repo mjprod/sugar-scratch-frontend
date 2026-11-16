@@ -22,6 +22,7 @@ import { useMotionOptional } from "@/features/collection/context/MotionContext";
 import type { RedeemReward } from "@/services/redeem";
 import {
   COIN_EXCHANGE_OPTIONS,
+  DAILY_AD_LIMIT,
   type CoinExchangeOption,
   type StoreBadge,
   type StoreProduct,
@@ -86,6 +87,7 @@ export type GetDiamondsFlowStep =
 export function GetDiamondsCatalog({
   products,
   coinBalance,
+  adClaimsToday = 0,
   busy,
   activeProductId,
   flowStep,
@@ -100,6 +102,7 @@ export function GetDiamondsCatalog({
 }: {
   products: StoreProduct[];
   coinBalance: number;
+  adClaimsToday?: number;
   busy: boolean;
   activeProductId?: string;
   flowStep: GetDiamondsFlowStep;
@@ -137,7 +140,13 @@ export function GetDiamondsCatalog({
       document.documentElement.classList.remove("get-diamonds-anims-off");
     };
   }, []);
+  const adProduct = products.find((p) => p.kind === "rewarded-ad") ?? null;
   const diamondPacks = products.filter((p) => p.kind === "diamonds");
+  // Watch Ad leads the Diamonds coverflow (before cash packs).
+  const diamondSlides = adProduct
+    ? [adProduct, ...diamondPacks]
+    : diamondPacks;
+  const adRemaining = Math.max(0, DAILY_AD_LIMIT - adClaimsToday);
 
   function isProcessing(productId: string) {
     return (
@@ -178,8 +187,9 @@ export function GetDiamondsCatalog({
           />
         ) : (
           <PackageCarousel
-            packs={diamondPacks}
+            packs={diamondSlides}
             busy={busy}
+            adExhausted={adRemaining <= 0}
             isProcessing={isProcessing}
             onSelect={onSelect}
           />
@@ -424,11 +434,13 @@ const PACKAGE_COVERFLOW = {
 function PackageCarousel({
   packs,
   busy,
+  adExhausted,
   isProcessing,
   onSelect,
 }: {
   packs: StoreProduct[];
   busy: boolean;
+  adExhausted: boolean;
   isProcessing: (productId: string) => boolean;
   onSelect: (product: StoreProduct) => void;
 }) {
@@ -470,7 +482,10 @@ function PackageCarousel({
             <PackageCard
               product={product}
               processing={isProcessing(product.id)}
-              disabled={busy}
+              disabled={
+                busy ||
+                (product.kind === "rewarded-ad" && adExhausted)
+              }
               iconsAnimated={!swiping && index === activeIndex}
               onBuy={() => onSelect(product)}
             />
@@ -687,11 +702,13 @@ function PackageCard({
   iconsAnimated?: boolean;
   onBuy: () => void;
 }) {
+  const isAd = product.kind === "rewarded-ad";
   return (
     <CurrencyPackCard
       currency="diamonds"
       amount={product.diamonds}
-      priceLabel={product.priceLabel}
+      kicker={isAd ? "Watch Ad" : undefined}
+      priceLabel={isAd ? "Watch Ad" : product.priceLabel}
       badge={product.badge}
       featured={product.badge === "Best Value"}
       processing={processing}

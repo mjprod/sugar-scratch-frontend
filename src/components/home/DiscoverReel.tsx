@@ -53,6 +53,7 @@ export function DiscoverReel({
     packName: string;
     price: string;
     creator: string;
+    creatorId: string;
   }) => void;
   onLikeAttempt?: (itemId: string) => boolean;
   onOpenCreator?: (creatorId: string) => void;

@@ -50,6 +50,7 @@ async function main() {
 
     const pack = toPurchasePack(first);
     assert(pack.packId === first.packId, "purchase pack id");
+    assert(pack.creatorId === first.creatorId, "purchase creator id");
     assert(pack.price.includes(String(first.diamondCost)), "price includes diamonds");
 
     if (page1.hasMore) {

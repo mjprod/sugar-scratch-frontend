@@ -141,6 +141,7 @@ export function HomeFeedScreen({
     packName: string;
     price: string;
     creator: string;
+    creatorId: string;
   }) => void;
   /** Guest like gate — return false to block toggle. */
   onLikeAttempt?: (itemId: string) => boolean;

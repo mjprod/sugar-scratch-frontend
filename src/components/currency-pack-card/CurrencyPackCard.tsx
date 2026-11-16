@@ -16,6 +16,8 @@ export type CurrencyPackCardProps = {
   currency: CurrencyPackCurrency;
   amount: number;
   priceLabel: string;
+  /** Override kicker (“Diamond Pack” / “Coin to Diamonds”). */
+  kicker?: string;
   badge?: StoreBadge | null;
   featured?: boolean;
   processing?: boolean;
@@ -30,6 +32,7 @@ function badgeClassName(badge: StoreBadge): string {
   if (badge === "Popular") return "is-popular";
   if (badge === "Best Value") return "is-best";
   if (badge === "Bonus") return "is-bonus";
+  if (badge === "FREE") return "is-free";
   return "";
 }
 
@@ -38,6 +41,7 @@ export function CurrencyPackCard({
   currency,
   amount,
   priceLabel,
+  kicker,
   badge = null,
   featured = false,
   processing = false,
@@ -49,9 +53,13 @@ export function CurrencyPackCard({
   const isCoins = currency === "coins";
   const amountLabel = amount.toLocaleString();
   const priceDisplay = priceLabel;
+  const kickerLabel =
+    kicker ?? (isCoins ? "Coin to Diamonds" : "Diamond Pack");
   const ariaPrice = isCoins
     ? `Swap ${priceDisplay} Coins for ${amountLabel} Diamonds`
-    : `Buy ${amountLabel} Diamonds for ${priceDisplay}`;
+    : kicker
+      ? `${kickerLabel}: ${amountLabel} Diamonds`
+      : `Buy ${amountLabel} Diamonds for ${priceDisplay}`;
 
   return (
     <article
@@ -76,9 +84,7 @@ export function CurrencyPackCard({
                 {badge}
               </span>
             ) : null}
-            <p className="currency-pack-card__kicker">
-              {isCoins ? "Coin Swap" : "Diamond Pack"}
-            </p>
+            <p className="currency-pack-card__kicker">{kickerLabel}</p>
             <span className="currency-pack-card__icon">
               {processing ? (
                 <Loader2

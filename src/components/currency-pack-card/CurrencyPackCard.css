@@ -222,6 +222,11 @@
   border-color: oklch(0.811 0.101 293.6 / 0.35);
 }
 
+.currency-pack-card__badge.is-free {
+  color: oklch(0.828 0.101 145.3);
+  border-color: oklch(0.828 0.101 145.3 / 0.35);
+}
+
 .currency-pack-card__kicker {
   position: relative;
   z-index: 1;
