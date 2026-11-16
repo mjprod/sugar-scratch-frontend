@@ -7428,7 +7428,7 @@ body[data-theme="v8"] .app-empty-title {
 
 body[data-theme="v8"] .app-empty-copy {
   margin: 0;
-
+  max-width: 30ch;
   color: oklch(0.967 0.01 320.55 / 0.62);
   font-size: var(--text-title);
   line-height: 1.45;
