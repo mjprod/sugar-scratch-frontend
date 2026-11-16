@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { landingPageModelId } from "@/pages/lp-build/lpModel";
 import { loadModels, modelCoverUrl } from "@/services/models";
 
 const MOCK_CARDS = [
@@ -73,10 +74,7 @@ export function LpBuildBenefits({
   disableStackAnimation?: boolean;
 }) {
   const [searchParams] = useSearchParams();
-  const modelId =
-    searchParams.get("model")?.trim() ||
-    searchParams.get("username")?.trim() ||
-    "julianaval";
+  const modelId = landingPageModelId(searchParams);
   const [coverUrl, setCoverUrl] = useState("");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
