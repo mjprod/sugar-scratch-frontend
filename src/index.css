@@ -132,6 +132,14 @@
   font-style: italic;
   font-display: swap;
 }
+/* Dedicated family so iOS Safari can't fall back to a lighter DM Sans weight. */
+@font-face {
+  font-family: "DM Sans Black";
+  src: url("/font/dm-sans/DMSans-Black.ttf") format("truetype");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
 
 :root {
   --font-card-overlay: "CardOverlay", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;

@@ -45,6 +45,9 @@ const GameNowinPage = lazy(() =>
 const NowinPage = lazy(() =>
   import("@/pages/NowinPage").then((m) => ({ default: m.NowinPage })),
 );
+const JokerBallPage = lazy(() =>
+  import("@/pages/JokerBallPage").then((m) => ({ default: m.JokerBallPage })),
+);
 const PhotoScratchPage = lazy(() =>
   import("@/pages/PhotoScratchPage").then((m) => ({
     default: m.PhotoScratchPage,
@@ -472,6 +475,8 @@ export function AppRoutes() {
             <Route path="game/win" element={<GameWinPage />} />
             <Route path="game/nowin" element={<GameNowinPage />} />
             <Route path="nowin" element={<NowinPage />} />
+            <Route path="joker-ball" element={<JokerBallPage />} />
+            <Route path="3d-ball" element={<JokerBallPage />} />
             <Route
               path="game"
               element={

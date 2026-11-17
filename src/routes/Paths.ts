@@ -74,6 +74,10 @@ export const Paths = {
   gameNowin: "/game/nowin",
   /** Design sandbox for the card no-win / lose result (reuses win chrome for now). */
   nowin: "/nowin",
+  /** Magic-8-ball number window. Swipe sideways through 01–38. */
+  jokerBall: "/joker-ball",
+  /** Same sandbox, opens on the Three.js spin ball. */
+  jokerBall3d: "/3d-ball",
   /** Lab sandbox for iterative game UI work (Juliana motion scratch). */
   gameUi: "/game-ui",
   /** Isolated workshop for assembling Figma pieces one at a time. */

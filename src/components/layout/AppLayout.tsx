@@ -227,7 +227,9 @@ export function AppLayout() {
     location.pathname.startsWith("/photo-scratch") ||
     location.pathname.startsWith("/audio-test") ||
     location.pathname.startsWith("/card-open-test") ||
-    location.pathname === "/nowin";
+    location.pathname === "/nowin" ||
+    location.pathname === "/joker-ball" ||
+    location.pathname === "/3d-ball";
 
   const onPackPocket =
     location.pathname.startsWith("/pack-pocket") ||
