@@ -643,13 +643,16 @@
 /* Theme motion Play — ◆ price · Play Motion · ▶ */
 .coverflow-compact-play-cta {
   --play-cta-scale: 0.8;
-  --play-cta-font: calc(14px * var(--play-cta-scale));
   --play-cta-icon: calc(14px * var(--play-cta-scale));
   position: relative;
   z-index: 3;
   width: calc(210px * var(--play-cta-scale));
   height: calc(56px * var(--play-cta-scale));
   overflow: visible;
+}
+
+.coverflow-compact-play-cta .cta-button {
+  --cta-font-size: var(--text-body);
 }
 
 /* Same scaled shell as priced CTA — tighter side pad so label fits. */
@@ -704,14 +707,14 @@
 }
 
 .coverflow-compact-play-cta__price {
-  font-size: var(--play-cta-font);
+  font-size: var(--text-body);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
 }
 
 .coverflow-compact-play-cta__label {
-  font-size: var(--play-cta-font);
+  font-size: var(--text-body);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;

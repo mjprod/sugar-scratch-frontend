@@ -244,7 +244,6 @@ function PackSlideHud({
                 strokeWidth={1}
                 label="Unlock"
                 costAmount={null}
-                fontSize={14}
                 cornerRadius={999}
                 tabIndex={revealed ? 0 : -1}
                 aria-label={`Unlock ${item.packName || item.name}`}
@@ -381,7 +380,6 @@ function PackSlideHud({
                     )
                   }
                   costAmount={null}
-                  fontSize={14} /* body step — was 11 via 0.8 scale */
                   cornerRadius={999}
                   tabIndex={revealed ? 0 : -1}
                   aria-label={
