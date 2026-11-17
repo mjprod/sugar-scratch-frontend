@@ -475,7 +475,7 @@
   box-sizing: border-box;
   width: 100%;
   margin: 0;
-  padding: 0 0.5rem;
+  padding: 0 var(--space-2);
   overflow: hidden;
   background: linear-gradient(180deg, #ffffff7d 20%, rgb(255 255 255 / 0%) 81%);
   -webkit-background-clip: text;
@@ -680,7 +680,7 @@
 }
 
 .coverflow-compact-play-cta .cta-button__label {
-  padding: 0 calc(1rem * var(--play-cta-scale));
+  padding: 0 calc(var(--space-4) * var(--play-cta-scale));
 }
 
 .coverflow-compact-play-cta .cta-button__title-row {

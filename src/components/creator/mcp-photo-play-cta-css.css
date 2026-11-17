@@ -25,7 +25,7 @@
   justify-content: center;
   align-items: center;
   max-width: max-content;
-  padding: 1px;
+  padding: var(--space-px);
   border-radius: 3rem;
   background: linear-gradient(
     var(--mcp-cta-grad-angle),

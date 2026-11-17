@@ -159,7 +159,7 @@ body[data-theme="v8"] .get-diamonds-hero-band {
   position: relative;
   display: block;
   min-height: 18rem;
-  margin-top: -4rem;
+  margin-top: calc(-1 * var(--space-16));
   margin-inline: 0;
   width: 100%;
   border-radius: 0;

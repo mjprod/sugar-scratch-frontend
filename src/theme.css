@@ -9252,7 +9252,7 @@ body[data-theme="v8"] .coverflow-status-pager__pill-rim.mcp-photo-play-cta-css-w
   width: 100%;
   height: 100%;
   max-width: none;
-  padding: 1px;
+  padding: var(--space-px);
   border-radius: 999px;
   box-sizing: border-box;
   pointer-events: none;
