@@ -496,11 +496,7 @@ function PackageCarousel({
   );
 }
 
-function coinSwapBadge(
-  option: CoinExchangeOption,
-  index: number,
-  total: number,
-): StoreBadge | null {
+function coinSwapBadge(index: number, total: number): StoreBadge | null {
   if (index === Math.floor(total / 2)) return "Best Value";
   if (index === 1) return "Popular";
   return null;
@@ -551,7 +547,7 @@ function CoinSwapCarousel({
         onTransitionEnd={() => setSwiping(false)}
       >
         {options.map((option, index) => {
-          const badge = coinSwapBadge(option, index, options.length);
+          const badge = coinSwapBadge(index, options.length);
           const affordable = coinBalance >= option.coins;
           return (
             <SwiperSlide

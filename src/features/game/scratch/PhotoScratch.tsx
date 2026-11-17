@@ -852,7 +852,7 @@ function motionStatusLabel(status: string) {
 export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
   const { authed, bumpInventoryRevision } = useAuth();
-  const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
+  const { addCoins, addDiamonds, spendCoins, spendDiamonds, diamonds } =
     useWallet();
   /** Server-issued scratch hand — required to persist 10% coin awards. */
   const handIdRef = useRef("");

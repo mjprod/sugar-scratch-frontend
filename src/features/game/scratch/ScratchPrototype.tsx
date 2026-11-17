@@ -1447,7 +1447,7 @@ export function ScratchPrototype({
   onFinish?: () => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
+  const { addCoins, addDiamonds, spendCoins, spendDiamonds, diamonds } =
     useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
