@@ -53,10 +53,11 @@ export function useScratchBgmSrc(themeKey: string): string {
 
 /**
  * Drives the motion-scratch BGM from stage state (see
- * `resolveMotionScratchBgmPlan`). Stops without a fade on unmount.
+ * `resolveMotionScratchBgmPlan`).
  *
- * Only a warm → cold change fades the loop out; center → docked must not stop
- * it, so the stop lives in the plan, not in the effect cleanup.
+ * Showcase / warm→cold fade the loop out. Unmount uses the same fade so a
+ * short reduce-motion showcase can't hard-cut mid-ramp; an already-running
+ * fade is left alone (see `syncMotionScratchBgm`).
  */
 export function useMotionScratchBgm({
   warm,
@@ -89,5 +90,5 @@ export function useMotionScratchBgm({
     setMotionScratchBgmActive(true);
   }, [warm, topBarPhase, skipToPlay]);
 
-  useEffect(() => () => stopMotionScratchBgm({ fadeOutMs: 0 }), []);
+  useEffect(() => () => stopMotionScratchBgm(), []);
 }

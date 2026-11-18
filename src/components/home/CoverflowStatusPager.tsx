@@ -11,6 +11,8 @@ import {
   shouldMeasureWithPillGeometry,
   type StatusDotMetric,
 } from "./coverflowStatusMetrics";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
+import "@/components/creator/mcp-photo-play-cta-css.css";
 
 type DotMetric = StatusDotMetric;
 
@@ -49,6 +51,7 @@ export function CoverflowStatusPager({
   const total = Math.max(0, Math.floor(count));
   const active = Math.min(Math.max(0, activeIndex), Math.max(0, total - 1));
   const interactive = typeof onSelectIndex === "function";
+  const gradWrapRef = useMcpCtaGradMotion(interactive);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -567,7 +570,12 @@ export function CoverflowStatusPager({
               onPointerUp={endScrub}
               onPointerCancel={endScrub}
             >
-              <span className="coverflow-status-pager__pill-face" />
+              <div
+                ref={gradWrapRef}
+                className="coverflow-status-pager__pill-rim mcp-photo-play-cta-css-wrap"
+              >
+                <span className="coverflow-status-pager__pill-face mcp-photo-play-cta-css" />
+              </div>
             </span>
           ) : null}
           {Array.from({ length: total }, (_, index) => {

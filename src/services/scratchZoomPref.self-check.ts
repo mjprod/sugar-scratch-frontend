@@ -1,9 +1,10 @@
 /**
- * Touch-zoom pref: default on, persists, notifies once.
+ * Touch-zoom pref: motion off / photo on by default, legacy seed, notifies once.
  * Run: npx tsx src/services/scratchZoomPref.self-check.ts
  */
 import {
   getScratchZoomEnabled,
+  resetScratchZoomPrefCache,
   setScratchZoomEnabled,
   subscribeScratchZoom,
 } from "./scratchZoomPref.ts";
@@ -22,22 +23,53 @@ const local = new Map<string, string>();
   localStorage: globalThis.localStorage,
 };
 
-assert(getScratchZoomEnabled() === true, "zoom defaults on");
+assert(getScratchZoomEnabled("motion") === false, "motion zoom defaults off");
+assert(getScratchZoomEnabled("photo") === true, "photo zoom defaults on");
 
 let notifies = 0;
 const unsub = subscribeScratchZoom(() => {
   notifies += 1;
 });
-setScratchZoomEnabled(false);
-assert(notifies === 1, "disabling notifies once");
-assert(getScratchZoomEnabled() === false, "disable sticks");
+setScratchZoomEnabled("motion", true);
+assert(notifies === 1, "enabling motion notifies once");
+assert(getScratchZoomEnabled("motion") === true, "motion enable sticks");
 assert(
-  local.get("sugar.v8.scratchZoom.enabled") === JSON.stringify({ enabled: false }),
-  "disable persists",
+  local.get("sugar.v8.scratchZoom.motion.enabled") ===
+    JSON.stringify({ enabled: true }),
+  "motion enable persists",
 );
-setScratchZoomEnabled(false);
+assert(getScratchZoomEnabled("photo") === true, "photo unchanged when motion toggled");
+setScratchZoomEnabled("motion", true);
 assert(notifies === 1, "same value is a no-op");
-setScratchZoomEnabled(true);
-assert(getScratchZoomEnabled() === true, "re-enable sticks");
+setScratchZoomEnabled("photo", false);
+assert(notifies === 2, "disabling photo notifies");
+assert(getScratchZoomEnabled("photo") === false, "photo disable sticks");
+assert(getScratchZoomEnabled("motion") === true, "motion unchanged when photo toggled");
+setScratchZoomEnabled("motion", false);
+assert(getScratchZoomEnabled("motion") === false, "motion disable sticks");
 unsub();
+
+// Missing per-mode keys seed from the legacy shared pref.
+local.clear();
+resetScratchZoomPrefCache();
+local.set("sugar.v8.scratchZoom.enabled", JSON.stringify({ enabled: false }));
+assert(
+  getScratchZoomEnabled("motion") === false,
+  "legacy off seeds motion off",
+);
+assert(
+  getScratchZoomEnabled("photo") === false,
+  "legacy off seeds photo off (not photo default)",
+);
+assert(
+  local.get("sugar.v8.scratchZoom.motion.enabled") ===
+    JSON.stringify({ enabled: false }),
+  "legacy seed writes motion key",
+);
+assert(
+  local.get("sugar.v8.scratchZoom.photo.enabled") ===
+    JSON.stringify({ enabled: false }),
+  "legacy seed writes photo key",
+);
+
 console.log("scratchZoomPref self-check ok");

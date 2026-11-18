@@ -51,6 +51,7 @@ function ScratchGameEmbed() {
   const model = searchParams.get("model")?.trim() || "";
   const card = searchParams.get("card")?.trim() || "";
   const creator = searchParams.get("creator")?.trim() || "";
+  const theme = searchParams.get("theme")?.trim() || "";
 
   // Leave from the pause overlay — progress is saved, so no second confirm.
   function leaveGame() {
@@ -59,6 +60,7 @@ function ScratchGameEmbed() {
       memoryNavigate(
         collectionReturnHref({
           creatorId: creator,
+          themeId: theme,
           modelId: model,
           cardId: card,
         }),
@@ -72,6 +74,7 @@ function ScratchGameEmbed() {
     memoryNavigate(
       collectionReturnHref({
         creatorId: creator,
+        themeId: theme,
         modelId: model,
         cardId: card,
       }),

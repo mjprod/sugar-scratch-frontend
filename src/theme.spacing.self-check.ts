@@ -71,6 +71,7 @@ const PAGE_SHELLS = [
   "src/components/purchase/PurchaseFlow.tsx",
   "src/theme.css",
   "src/components/store/GetDiamondsScreen.css",
+  "src/components/currency-pack-card/CurrencyPackCard.css",
 ];
 
 const FORBIDDEN = [

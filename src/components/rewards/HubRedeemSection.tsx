@@ -78,15 +78,14 @@ export function HubRedeemSection({
       className="hub-module hub-redeem"
       aria-labelledby="hub-redeem-heading"
     >
-      <h2
-        id="hub-redeem-heading"
-        className="hub-section-label hub-section-label--redeem"
-      >
-        <Ticket className="size-3.5" aria-hidden="true" />
-        {heading}
-      </h2>
-
       <div className="hub-redeem-card">
+        <h2
+          id="hub-redeem-heading"
+          className="hub-section-label hub-section-label--redeem"
+        >
+          <Ticket className="size-3.5" aria-hidden="true" />
+          {heading}
+        </h2>
         <p className="hub-redeem-lead">
           Have a code? Redeem it for your reward.
         </p>

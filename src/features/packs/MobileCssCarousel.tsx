@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
@@ -13,12 +14,20 @@ import {
   CtaButton,
   ctaButtonPropsFromTemplate,
 } from "@/shared/ui/cta";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { LockStatusBanner } from "@/components/lock-status/LockStatusBanner";
+import {
+  MotionTeaseBanner,
+  type MotionCardTheme,
+} from "@/components/motion-card/MotionCard";
+import "@/components/motion-card/MotionCard.css";
 import {
   addPackToCart,
   isPackInCart,
   subscribeCart,
 } from "@/services/cart";
 import { CoverflowBuyConfirm } from "@/features/packs/CoverflowBuyConfirm";
+import { PlayConfirm } from "@/components/static-card/PlayConfirm";
 import { type Iteration } from "@/features/packs/types";
 import {
   claimMediaDecoder,
@@ -28,13 +37,33 @@ import { useHoldRepeat } from "@/hooks/useHoldRepeat";
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "@/features/packs/packs.css";
+import "@/features/packs/packs-entry.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+import { useMcpCtaGradMotion } from "@/components/creator/useMcpCtaGradMotion";
+import { useMotionOptional } from "@/features/collection/hooks/useMotion";
+import { shouldApplyFocusRect } from "@/features/packs/mobileCssCarouselFocusRect";
 import "./MobileCssCarousel.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
+/** Match user ask / CoverFlow feel — yaw only on active pack art + live video. */
+const PACK_TILT_MAX_YAW_DEG = 25;
+/** Lower = more sensitive (smaller phone tilt → full yaw). Was 42 → 28. */
+const PACK_TILT_GAMMA_RANGE = 16;
+const PACK_TILT_LERP = 0.05;
+/** Influencer stage backdrop — yaw → X, pitch → Y. */
+const BACKDROP_TILT_MAX_X_PX = 36;
+const BACKDROP_TILT_MAX_Y_PX = 28;
+const BACKDROP_TILT_GAMMA_RANGE = 28;
+const BACKDROP_TILT_BETA_RANGE = 36;
 
 const BUY_PACK_CTA_SIZE_MOBILE = {
   width: 159,
   height: 60,
   strokeWidth: 2,
 };
+
+/** Match theme card shrink (~20%); keep CSS --play-cta-scale in sync. */
+const PLAY_MOTION_CTA_SCALE = 0.8;
 
 /** Matches MobileCssCarousel.css dual-stack opacity transition. */
 const GLOW_FADE_MS = 640;
@@ -56,6 +85,15 @@ function glowColorForItem(item: Iteration | undefined) {
     item?.overlayColorStart ||
     DEFAULT_GLOW
   );
+}
+
+function indexForSelectedId(
+  list: Iteration[],
+  selectedId: string | null | undefined,
+) {
+  if (!selectedId) return 0;
+  const index = list.findIndex((item) => item.id === selectedId);
+  return index >= 0 ? index : 0;
 }
 
 function PackGlowStacks({
@@ -95,6 +133,9 @@ function PackSlideHud({
   buyConfirmLeaving,
   buyQuantity,
   confirmingAdd,
+  slideCta = "buy",
+  freePlayMode = false,
+  lockStatus = null,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -102,6 +143,8 @@ function PackSlideHud({
   onAddToPocket,
   onBuyConfirmLeaveEnd,
   onConfirmingAddEnd,
+  onView,
+  onUnlock,
 }: {
   item: Iteration;
   active: boolean;
@@ -110,6 +153,11 @@ function PackSlideHud({
   buyConfirmLeaving: boolean;
   buyQuantity: number;
   confirmingAdd: boolean;
+  slideCta?: "buy" | "view" | "play";
+  /** Theme Free Play toggle on — CTA says Free Play (no ◆ price) for every motion. */
+  freePlayMode?: boolean;
+  /** Board lock for this motion; null skips banner + Unlock. */
+  lockStatus?: "locked" | "unlocked" | null;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -117,13 +165,40 @@ function PackSlideHud({
   onAddToPocket: () => void;
   onBuyConfirmLeaveEnd: () => void;
   onConfirmingAddEnd: () => void;
+  onView?: (item: Iteration) => void;
+  onUnlock?: (item: Iteration) => void;
 }) {
+  const locked = lockStatus === "locked";
   // Mount hidden, then flip is-visible after paint so CSS entrance transitions run.
   const [revealed, setRevealed] = useState(false);
+  const [playCtaEl, setPlayCtaEl] = useState<HTMLDivElement | null>(null);
+  const [playConfirm, setPlayConfirm] = useState(false);
+  const [playConfirmLeaving, setPlayConfirmLeaving] = useState(false);
+  const pendingPlayRef = useRef(false);
+  const playOpenedAtRef = useRef(0);
+  const playCost = Math.round(item.price ?? 0);
+  const [cssPlayCta, setCssPlayCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+  const gradWrapRef = useMcpCtaGradMotion(cssPlayCta);
+  const motionIcon = 14; /* match --text-body Play Motion type */
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssPlayCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!active) {
       setRevealed(false);
+      setPlayConfirm(false);
+      setPlayConfirmLeaving(false);
+      pendingPlayRef.current = false;
       return;
     }
     if (prefersReducedMotion()) {
@@ -160,40 +235,322 @@ function PackSlideHud({
         }}
       >
         <div className="coverflow-buy-pack-cta__primary">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            {...BUY_PACK_CTA_SIZE_MOBILE}
-            cornerRadius={12} /* 0.75rem */
-            // Force red squircle plate (coverflow used to pin gold hex chrome).
-            auroraBaseColor="#42001b"
-            auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-            auroraRotation={45}
-            glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-            glowColor="326 90 30"
-            strokeColor="rgba(170, 8, 95, 0.42)"
-            labelColor="#ffe0e8"
-            auroraPaused
-            glowAlwaysOn={false}
-            glowOuterBloom="off"
-            costIconAnimated={false}
-            label="Buy Pack"
-            costAmount={String(
-              Math.round(
-                (item.price ?? 0) *
-                  (buyConfirmOpen || buyConfirmLeaving ? buyQuantity : 1),
-              ),
-            )}
-            style={{ ["--cta-aurora-angle" as string]: "45deg" }}
-            className="coverflow-buy-pack-cta__button"
-            tabIndex={revealed ? 0 : -1}
-            aria-expanded={buyConfirmOpen || buyConfirmLeaving}
-            aria-controls={`coverflow-buy-confirm-${item.id}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggleBuyConfirm();
-            }}
-          />
-          {buyConfirmOpen || buyConfirmLeaving ? (
+          {slideCta === "play" && locked ? (
+            <div className="coverflow-compact-play-cta">
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
+                height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
+                strokeWidth={1}
+                label="Unlock"
+                costAmount={null}
+                cornerRadius={999}
+                tabIndex={revealed ? 0 : -1}
+                aria-label={`Unlock ${item.packName || item.name}`}
+                className="coverflow-buy-pack-cta__button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onUnlock?.(item);
+                }}
+              />
+            </div>
+          ) : slideCta === "play" ? (
+            <div
+              ref={setPlayCtaEl}
+              className={[
+                "coverflow-compact-play-cta",
+                freePlayMode ? "is-free-play-owned" : "",
+                cssPlayCta ? "is-css" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {cssPlayCta ? (
+                <div ref={gradWrapRef} className="mcp-photo-play-cta-css-wrap">
+                  <button
+                    type="button"
+                    className="mcp-photo-play-cta-css mcp-photo-play-cta-css--motion coverflow-buy-pack-cta__button"
+                    tabIndex={revealed ? 0 : -1}
+                    aria-label={
+                      freePlayMode
+                        ? `Free Play ${item.packName || item.name}`
+                        : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
+                    }
+                    aria-expanded={
+                      freePlayMode
+                        ? undefined
+                        : playConfirm || playConfirmLeaving
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (freePlayMode) {
+                        onView?.(item);
+                        return;
+                      }
+                      if (playConfirmLeaving) return;
+                      if (playConfirm) {
+                        if (Date.now() - playOpenedAtRef.current < 450) return;
+                        pendingPlayRef.current = false;
+                        setPlayConfirmLeaving(true);
+                        return;
+                      }
+                      playOpenedAtRef.current = Date.now();
+                      setPlayConfirm(true);
+                    }}
+                  >
+                    {freePlayMode ? (
+                      <>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Free Play
+                        </span>
+                        <Play
+                          className="mcp-photo-play-cta-css__play"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DiamondLottie
+                          className="mcp-photo-play-cta-css__diamond"
+                          size={motionIcon}
+                          aria-hidden
+                        />
+                        <span className="mcp-photo-play-cta-css__price">
+                          {playCost}
+                        </span>
+                        <span className="mcp-photo-play-cta-css__label">
+                          Play Motion
+                        </span>
+                        <Play
+                          className="mcp-photo-play-cta-css__play"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <CtaButton
+                  {...ctaButtonPropsFromTemplate("squircleCTA")}
+                  width={Math.round(210 * PLAY_MOTION_CTA_SCALE)}
+                  height={Math.round(56 * PLAY_MOTION_CTA_SCALE)}
+                  strokeWidth={1}
+                  label=""
+                  leadingIcon={
+                    freePlayMode ? (
+                      <>
+                        <span className="coverflow-compact-play-cta__label">
+                          Free Play
+                        </span>
+                        <Play
+                          className="coverflow-compact-play-cta__triangle"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <DiamondLottie
+                          className="coverflow-compact-play-cta__diamond"
+                          size={motionIcon}
+                          aria-hidden
+                        />
+                        <span className="coverflow-compact-play-cta__price">
+                          {playCost}
+                        </span>
+                        <span className="coverflow-compact-play-cta__label">
+                          Play Motion
+                        </span>
+                        <Play
+                          className="coverflow-compact-play-cta__triangle"
+                          size={motionIcon}
+                          strokeWidth={2.4}
+                          fill="currentColor"
+                          aria-hidden
+                        />
+                      </>
+                    )
+                  }
+                  costAmount={null}
+                  cornerRadius={999}
+                  tabIndex={revealed ? 0 : -1}
+                  aria-label={
+                    freePlayMode
+                      ? `Free Play ${item.packName || item.name}`
+                      : `Play Motion ${item.packName || item.name} for ${playCost} diamonds`
+                  }
+                  aria-expanded={
+                    freePlayMode
+                      ? undefined
+                      : playConfirm || playConfirmLeaving
+                  }
+                  className="coverflow-buy-pack-cta__button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (freePlayMode) {
+                      onView?.(item);
+                      return;
+                    }
+                    if (playConfirmLeaving) return;
+                    if (playConfirm) {
+                      if (Date.now() - playOpenedAtRef.current < 450) return;
+                      pendingPlayRef.current = false;
+                      setPlayConfirmLeaving(true);
+                      return;
+                    }
+                    playOpenedAtRef.current = Date.now();
+                    setPlayConfirm(true);
+                  }}
+                />
+              )}
+              {!freePlayMode &&
+              (playConfirm || playConfirmLeaving) &&
+              playCtaEl ? (
+                <PlayConfirm
+                  anchor={playCtaEl}
+                  playCost={playCost}
+                  label="Play Motion Card?"
+                  leaving={playConfirmLeaving}
+                  onCancel={() => {
+                    pendingPlayRef.current = false;
+                    setPlayConfirmLeaving(true);
+                  }}
+                  onConfirm={() => {
+                    pendingPlayRef.current = true;
+                    setPlayConfirmLeaving(true);
+                  }}
+                  onLeaveEnd={() => {
+                    const play = pendingPlayRef.current;
+                    pendingPlayRef.current = false;
+                    setPlayConfirm(false);
+                    setPlayConfirmLeaving(false);
+                    if (play) onView?.(item);
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : cssPlayCta ? (
+            <div
+              ref={gradWrapRef}
+              className="mcp-photo-play-cta-css-wrap mcp-photo-play-cta-css-wrap--slider"
+            >
+              <button
+                type="button"
+                className="mcp-photo-play-cta-css mcp-photo-play-cta-css--slider coverflow-buy-pack-cta__button"
+                tabIndex={revealed ? 0 : -1}
+                aria-label={
+                  slideCta === "view"
+                    ? `View Theme ${item.packName || item.name}`
+                    : `Buy Pack ${item.packName || item.name} for ${Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      )} diamonds`
+                }
+                aria-expanded={
+                  slideCta === "buy"
+                    ? buyConfirmOpen || buyConfirmLeaving
+                    : undefined
+                }
+                aria-controls={
+                  slideCta === "buy"
+                    ? `coverflow-buy-confirm-${item.id}`
+                    : undefined
+                }
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (slideCta === "view") {
+                    onView?.(item);
+                    return;
+                  }
+                  onToggleBuyConfirm();
+                }}
+              >
+                <span className="mcp-photo-play-cta-css__label">
+                  {slideCta === "view" ? "View Theme" : "Buy Pack"}
+                </span>
+                {slideCta === "buy" ? (
+                  <span className="mcp-photo-play-cta-css__cost">
+                    <span className="mcp-photo-play-cta-css__price">
+                      {Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      )}
+                    </span>
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                  </span>
+                ) : null}
+              </button>
+            </div>
+          ) : (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              {...BUY_PACK_CTA_SIZE_MOBILE}
+              cornerRadius={12} /* 0.75rem */
+              // Force red squircle plate (coverflow used to pin gold hex chrome).
+              auroraBaseColor="#42001b"
+              auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+              auroraRotation={45}
+              glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+              glowColor="326 90 30"
+              strokeColor="rgba(170, 8, 95, 0.42)"
+              labelColor="#ffe0e8"
+              auroraPaused
+              glowAlwaysOn={false}
+              glowOuterBloom="off"
+              costIconAnimated={false}
+              label={slideCta === "view" ? "View Theme" : "Buy Pack"}
+              costAmount={
+                slideCta === "buy"
+                  ? String(
+                      Math.round(
+                        (item.price ?? 0) *
+                          (buyConfirmOpen || buyConfirmLeaving
+                            ? buyQuantity
+                            : 1),
+                      ),
+                    )
+                  : null
+              }
+              style={{ ["--cta-aurora-angle" as string]: "45deg" }}
+              className="coverflow-buy-pack-cta__button"
+              tabIndex={revealed ? 0 : -1}
+              aria-expanded={
+                slideCta === "buy"
+                  ? buyConfirmOpen || buyConfirmLeaving
+                  : undefined
+              }
+              aria-controls={
+                slideCta === "buy"
+                  ? `coverflow-buy-confirm-${item.id}`
+                  : undefined
+              }
+              onClick={(event) => {
+                event.stopPropagation();
+                if (slideCta === "view") {
+                  onView?.(item);
+                  return;
+                }
+                onToggleBuyConfirm();
+              }}
+            />
+          )}
+          {slideCta === "buy" && (buyConfirmOpen || buyConfirmLeaving) ? (
             <CoverflowBuyConfirm
               id={`coverflow-buy-confirm-${item.id}`}
               leaving={buyConfirmLeaving}
@@ -220,38 +577,84 @@ function CompactPlayButton({
   item: Iteration;
   onPlay: (item: Iteration) => void;
 }) {
+  const [cssCta, setCssCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+  const gradWrapRef = useMcpCtaGradMotion(cssCta);
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
+
   return (
-    <div className="mobile-css-carousel__play coverflow-play-only-cta">
-      <CtaButton
-        {...ctaButtonPropsFromTemplate("squircleCTA")}
-        fillParent
-        strokeWidth={1}
-        cornerRadius={999}
-        auroraBaseColor="#42001b"
-        auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
-        glowColors={["#aa085f", "#e00083", "#eb6a00"]}
-        glowColor="326 90 30"
-        strokeColor="rgba(170, 8, 95, 0.42)"
-        labelColor="#ffe0e8"
-        glowOuterBloom="off"
-        auroraPaused
-        label="Play"
-        leadingIcon={
-          <Play
-            className="motion-card-play-cta__triangle"
-            size={11}
-            strokeWidth={2.4}
-            fill="currentColor"
-            aria-hidden
-          />
-        }
-        costAmount={null}
-        aria-label={`Play ${item.packName || item.name}`}
-        onClick={(event) => {
-          event.stopPropagation();
-          onPlay(item);
-        }}
-      />
+    <div
+      className={[
+        "mobile-css-carousel__play",
+        "coverflow-play-only-cta",
+        cssCta ? "is-css" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {cssCta ? (
+        <div ref={gradWrapRef} className="mcp-photo-play-cta-css-wrap">
+          <button
+            type="button"
+            className="mcp-photo-play-cta-css mcp-photo-play-cta-css--play-only"
+            aria-label={`Play ${item.packName || item.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onPlay(item);
+            }}
+          >
+            <Play
+              className="mcp-photo-play-cta-css__play"
+              size={11}
+              strokeWidth={2.4}
+              fill="currentColor"
+              aria-hidden
+            />
+            <span className="mcp-photo-play-cta-css__label">Play</span>
+          </button>
+        </div>
+      ) : (
+        <CtaButton
+          {...ctaButtonPropsFromTemplate("squircleCTA")}
+          fillParent
+          strokeWidth={1}
+          cornerRadius={999}
+          auroraBaseColor="#42001b"
+          auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+          glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+          glowColor="326 90 30"
+          strokeColor="rgba(170, 8, 95, 0.42)"
+          labelColor="#ffe0e8"
+          glowOuterBloom="off"
+          auroraPaused
+          label="Play"
+          leadingIcon={
+            <Play
+              className="motion-card-play-cta__triangle"
+              size={11}
+              strokeWidth={2.4}
+              fill="currentColor"
+              aria-hidden
+            />
+          }
+          costAmount={null}
+          aria-label={`Play ${item.packName || item.name}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onPlay(item);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -263,10 +666,22 @@ export function MobileCssCarousel({
   onAddToPocket,
   onFocusChange,
   onSelect,
+  onView,
   buyDisabled = false,
   influencerBackdrop = false,
   selectedId = null,
   compact = false,
+  flat = false,
+  stageBackdropBase,
+  stageBackdropSrc,
+  stageBackdropSrc2x,
+  stageBackdropLabel,
+  slideCta = "buy",
+  freePlayMode = false,
+  ownedFreePlayIds = null,
+  lockedMotionIds = null,
+  motionTheme = "police",
+  onUnlock,
 }: {
   items: Iteration[];
   onReady?: () => void;
@@ -275,6 +690,8 @@ export function MobileCssCarousel({
   /** Home pocket path. When omitted, adds directly to the pack cart. */
   onAddToPocket?: (item: Iteration) => void;
   onFocusChange?: (item: Iteration | null) => void;
+  /** Profile coverflow: View Now instead of Buy Pack. */
+  onView?: (item: Iteration) => void;
   /** Compact resume strip: tap active pack (or play) instead of Buy Pack. */
   onSelect?: (item: Iteration) => void;
   buyDisabled?: boolean;
@@ -284,18 +701,56 @@ export function MobileCssCarousel({
   selectedId?: string | null;
   /** Fit a parent panel: no buy HUD, no dim overlay, scaled coverflow. */
   compact?: boolean;
+  /** Flat slide carousel (no coverflow 3D) — profile glass cards. */
+  flat?: boolean;
+  /** Profile charcoal art base (no extension) — fixed behind the slider, not in the track. */
+  stageBackdropBase?: string;
+  /** API charcoal bust URL (1x). Wins over stageBackdropBase when set. */
+  stageBackdropSrc?: string;
+  /** API charcoal bust URL (2x). */
+  stageBackdropSrc2x?: string;
+  /** Influencer name under the charcoal bust. */
+  stageBackdropLabel?: string;
+  /** Profile / theme: View Now or Play on the active slide instead of Buy Pack. */
+  slideCta?: "buy" | "view" | "play";
+  /**
+   * Theme Free Play toggle — CTA says Free Play for every motion while on.
+   * Pink owned ring still uses ownedFreePlayIds (unlocked only).
+   */
+  freePlayMode?: boolean;
+  /** Unlocked motions — pink ring while Free Play is on. */
+  ownedFreePlayIds?: ReadonlySet<string> | null;
+  /**
+   * Theme board lock set. `null` = no board yet (skip lock UI).
+   * Ids in the set render Locked + Unlock; others get Unlocked.
+   */
+  lockedMotionIds?: ReadonlySet<string> | null;
+  /** Theme tease copy/tint for locked slides (nurse → HANDLE WITH CARE, …). */
+  motionTheme?: MotionCardTheme;
+  /** Locked motion Unlock CTA — usually Buy Packs. */
+  onUnlock?: (item: Iteration) => void;
 }) {
+  const useCoverflow = !compact && !flat;
   const swiperRef = useRef<SwiperClass | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const stageNameRef = useRef<HTMLParagraphElement | null>(null);
   const onReadyRef = useRef(onReady);
   const onBuyRef = useRef(onBuy);
   const onAddToPocketRef = useRef(onAddToPocket);
   const onFocusChangeRef = useRef(onFocusChange);
   const onSelectRef = useRef(onSelect);
+  const onViewRef = useRef(onView);
+  const onUnlockRef = useRef(onUnlock);
+  const lockedMotionIdsRef = useRef(lockedMotionIds);
   const buyDisabledRef = useRef(buyDisabled);
   const readySent = useRef(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const activeIndexRef = useRef(0);
+  const [activeIndex, setActiveIndex] = useState(() =>
+    indexForSelectedId(items, selectedId),
+  );
+  const activeIndexRef = useRef(indexForSelectedId(items, selectedId));
+  const holdingRef = useRef(false);
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const stageRef = useRef<HTMLDivElement | null>(null);
   const focusRef = useRef<HTMLDivElement | null>(null);
   const liveVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -330,6 +785,9 @@ export function MobileCssCarousel({
   onAddToPocketRef.current = onAddToPocket;
   onFocusChangeRef.current = onFocusChange;
   onSelectRef.current = onSelect;
+  onViewRef.current = onView;
+  onUnlockRef.current = onUnlock;
+  lockedMotionIdsRef.current = lockedMotionIds;
   buyDisabledRef.current = buyDisabled;
   activeIndexRef.current = activeIndex;
   buyConfirmOpenRef.current = buyConfirmOpen;
@@ -347,6 +805,8 @@ export function MobileCssCarousel({
   // Duration 0 avoids stacking transitions that freeze the main thread while scrubbing.
   useEffect(() => {
     if (!selectedId) return;
+    // Arrow-hold owns the index; don't snap back mid-hold (coverflow end bounce).
+    if (holdingRef.current) return;
     const index = items.findIndex((item) => item.id === selectedId);
     if (index < 0) return;
     if (index === activeIndexRef.current) return;
@@ -522,8 +982,37 @@ export function MobileCssCarousel({
         "--slide-dim",
         String((compact ? 0.45 : 0.5) * eased),
       );
+      // Flat profile: side peeks dim + scale; active centers at full.
+      if (flat) {
+        slide.style.setProperty(
+          "--slide-scale",
+          String(1 - 0.15 * eased),
+        );
+        slide.style.setProperty(
+          "--slide-brightness",
+          String(1 - 0.3 * eased),
+        );
+      }
     });
-  }, [compact]);
+  }, [compact, flat]);
+
+  /** Kill leftover coverflow rotate/scale if a prior effect left inline 3D styles. */
+  const flattenSlideTransforms = useCallback(
+    (swiper: SwiperClass) => {
+      if (!flat) return;
+      swiper.el.classList.remove("swiper-3d", "swiper-coverflow");
+      swiper.wrapperEl?.classList.remove("swiper-3d");
+      for (const slide of swiper.slides) {
+        const el = slide as HTMLElement;
+        const transform = el.style.transform || "";
+        if (!transform || transform === "none") continue;
+        if (!/rotate|scale\(|matrix3d/i.test(transform)) continue;
+        el.style.transform = "none";
+        el.style.zIndex = "";
+      }
+    },
+    [flat],
+  );
 
   const syncLiveClass = useCallback(() => {
     const live =
@@ -532,12 +1021,77 @@ export function MobileCssCarousel({
     stageRef.current?.classList.toggle("is-live-video", live);
   }, []);
 
+  const setPackTiltYaw = useCallback((deg: number) => {
+    stageRef.current?.style.setProperty(
+      "--mobile-pack-tilt-yaw",
+      `${deg.toFixed(2)}deg`,
+    );
+  }, []);
+
+  const setBackdropTilt = useCallback((xPx: number, yPx: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    stage.style.setProperty("--influencer-backdrop-tilt-x", `${xPx.toFixed(2)}px`);
+    stage.style.setProperty("--influencer-backdrop-tilt-y", `${yPx.toFixed(2)}px`);
+  }, []);
+
   const setParked = useCallback((next: boolean) => {
     parkedRef.current = next;
     focusRef.current?.classList.toggle("is-parked", next);
+    if (next) setPackTiltYaw(0);
     if (!compact) setHudActive(!next);
     syncLiveClass();
-  }, [compact, syncLiveClass]);
+  }, [compact, setPackTiltYaw, syncLiveClass]);
+
+  // Profile tilt → pack yaw + influencer backdrop X/Y (Buy Pack HUD stays flat).
+  const motion = useMotionOptional();
+  const packTiltOn = Boolean(
+    motion?.enabled && motion.permission === "granted",
+  );
+  useEffect(() => {
+    if (
+      !packTiltOn ||
+      !motion ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setPackTiltYaw(0);
+      setBackdropTilt(0, 0);
+      return;
+    }
+    let yaw = 0;
+    let backdropX = 0;
+    let backdropY = 0;
+    return motion.subscribe((sample) => {
+      if (!sample.hasSample) return;
+
+      const yawNorm = Math.max(
+        -1,
+        Math.min(1, sample.gamma / BACKDROP_TILT_GAMMA_RANGE),
+      );
+      const pitchNorm = Math.max(
+        -1,
+        Math.min(1, (sample.beta - 55) / BACKDROP_TILT_BETA_RANGE),
+      );
+      backdropX += (-yawNorm * BACKDROP_TILT_MAX_X_PX - backdropX) * PACK_TILT_LERP;
+      backdropY += (-pitchNorm * BACKDROP_TILT_MAX_Y_PX - backdropY) * PACK_TILT_LERP;
+      setBackdropTilt(backdropX, backdropY);
+
+      if (parkedRef.current) {
+        if (yaw !== 0) {
+          yaw = 0;
+          setPackTiltYaw(0);
+        }
+        return;
+      }
+      const packNorm = Math.max(
+        -1,
+        Math.min(1, sample.gamma / PACK_TILT_GAMMA_RANGE),
+      );
+      const target = -packNorm * PACK_TILT_MAX_YAW_DEG;
+      yaw += (target - yaw) * PACK_TILT_LERP;
+      setPackTiltYaw(yaw);
+    });
+  }, [motion, packTiltOn, setBackdropTilt, setPackTiltYaw]);
 
   const layoutFocus = useCallback(() => {
     const shell = shellRef.current;
@@ -549,10 +1103,24 @@ export function MobileCssCarousel({
     if (!pack) return;
     const shellRect = shell.getBoundingClientRect();
     const packRect = pack.getBoundingClientRect();
-    focus.style.left = `${packRect.left - shellRect.left}px`;
-    focus.style.top = `${packRect.top - shellRect.top}px`;
-    focus.style.width = `${packRect.width}px`;
-    focus.style.height = `${packRect.height}px`;
+    // Skip mid-swipe transform snapshots (iOS ~40px / still-rotated AABB) — keep last good box.
+    if (
+      !shouldApplyFocusRect(
+        packRect.height,
+        pack.offsetHeight,
+        0.55,
+        packRect.width,
+        pack.offsetWidth,
+      )
+    ) {
+      return;
+    }
+    // Owned free-play ring is on the pack — inset so live video does not cover it.
+    const inset = pack.classList.contains("is-owned-free-play") ? 2 : 0;
+    focus.style.left = `${packRect.left - shellRect.left + inset}px`;
+    focus.style.top = `${packRect.top - shellRect.top + inset}px`;
+    focus.style.width = `${Math.max(0, packRect.width - inset * 2)}px`;
+    focus.style.height = `${Math.max(0, packRect.height - inset * 2)}px`;
   }, []);
 
   const attachActiveVideo = useCallback(() => {
@@ -574,7 +1142,18 @@ export function MobileCssCarousel({
       }
       return;
     }
-    const src = itemsRef.current[activeIndexRef.current]?.videoUrl?.trim() || "";
+    const activeItem = itemsRef.current[activeIndexRef.current];
+    const locked = Boolean(
+      lockedMotionIdsRef.current?.has(activeItem?.id ?? ""),
+    );
+    // Locked motions stay on the desaturated still — no live trailer.
+    if (locked) {
+      releaseClaimedDecoder(video);
+      focus?.classList.remove("is-ready");
+      syncLiveClass();
+      return;
+    }
+    const src = activeItem?.videoUrl?.trim() || "";
     if (!src) {
       releaseClaimedDecoder(video);
       focus?.classList.remove("is-ready");
@@ -588,7 +1167,9 @@ export function MobileCssCarousel({
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
     claimMediaDecoder(video, src);
-    if (video.readyState >= 2 && video.videoWidth > 1) {
+    const focusH = focus?.offsetHeight ?? 0;
+    // Keep hidden if layoutFocus skipped a mid-swipe tiny box (no size yet).
+    if (video.readyState >= 2 && video.videoWidth > 1 && focusH >= 80) {
       focus?.classList.add("is-ready");
     } else {
       focus?.classList.remove("is-ready");
@@ -596,6 +1177,13 @@ export function MobileCssCarousel({
     syncLiveClass();
     void video.play().catch(() => {});
   }, [layoutFocus, syncLiveClass]);
+
+  // Board lock status can arrive after first paint — drop live trailer if locked.
+  useEffect(() => {
+    if (!pageVisibleRef.current || !heroVisibleRef.current) return;
+    if (parkedRef.current) return;
+    attachActiveVideo();
+  }, [attachActiveVideo, lockedMotionIds]);
 
   const syncPlayback = useCallback(
     (next: number) => {
@@ -616,16 +1204,25 @@ export function MobileCssCarousel({
     return () => clearGlowTimers();
   }, [clearGlowTimers]);
 
-  // Catalog swap / first paint — snap to the focused pack color.
+  // Catalog swap / first paint — keep selected (or current) slide, not always 0.
   useEffect(() => {
     readySent.current = false;
-    setActiveIndex(0);
-    activeIndexRef.current = 0;
-    if (!compact) snapGlow(glowColorForItem(items[0]));
+    const preferredId =
+      selectedIdRef.current ||
+      itemsRef.current[activeIndexRef.current]?.id ||
+      null;
+    const next = indexForSelectedId(items, preferredId);
+    activeIndexRef.current = next;
+    setActiveIndex(next);
+    if (!compact) snapGlow(glowColorForItem(items[next]));
     releaseClaimedDecoder(liveVideoRef.current);
     focusRef.current?.classList.remove("is-ready");
     syncLiveClass();
-    if (swiperRef.current && pageVisibleRef.current && heroVisibleRef.current) {
+    const swiper = swiperRef.current;
+    if (swiper && swiper.activeIndex !== next) {
+      swiper.slideTo(next, 0);
+    }
+    if (swiper && pageVisibleRef.current && heroVisibleRef.current) {
       setParked(false);
       attachActiveVideo();
     }
@@ -720,10 +1317,19 @@ export function MobileCssCarousel({
 
   function onSwiper(swiper: SwiperClass) {
     swiperRef.current = swiper;
-    syncPlayback(swiper.activeIndex);
+    const preferred = indexForSelectedId(
+      itemsRef.current,
+      selectedIdRef.current,
+    );
+    if (swiper.activeIndex !== preferred) {
+      swiper.slideTo(preferred, 0);
+    }
+    syncPlayback(preferred);
     applySlideDim(swiper);
+    flattenSlideTransforms(swiper);
     swiper.update();
     applySlideDim(swiper);
+    flattenSlideTransforms(swiper);
     setParked(false);
     attachActiveVideo();
     markReady(swiper);
@@ -743,17 +1349,53 @@ export function MobileCssCarousel({
     if (swiper) markReady(swiper);
   }, [activeIndex, items, markReady]);
 
+  /** Start at 26cqi, then shrink so long influencer names still fit one line. */
+  const fitStageName = useCallback(() => {
+    const el = stageNameRef.current;
+    if (!el) return;
+    el.style.fontSize = "";
+    const maxPx = Number.parseFloat(getComputedStyle(el).fontSize) || 26;
+    const minPx = Math.max(12, maxPx * 0.45);
+    let size = maxPx;
+    el.style.fontSize = `${size}px`;
+    while (size > minPx && el.scrollWidth > el.clientWidth + 1) {
+      size -= 0.5;
+      el.style.fontSize = `${size}px`;
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!flat || !stageBackdropLabel) return;
+    fitStageName();
+  }, [flat, stageBackdropLabel, fitStageName]);
+
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => layoutFocus());
+    const observer = new ResizeObserver(() => {
+      layoutFocus();
+      fitStageName();
+    });
     observer.observe(shell);
-    window.addEventListener("resize", layoutFocus);
+    const onResize = () => {
+      layoutFocus();
+      fitStageName();
+    };
+    window.addEventListener("resize", onResize);
     return () => {
       observer.disconnect();
-      window.removeEventListener("resize", layoutFocus);
+      window.removeEventListener("resize", onResize);
     };
-  }, [layoutFocus]);
+  }, [layoutFocus, fitStageName]);
+
+  // Free Play toggle adds/removes the pack ring without a slide change —
+  // re-inset the live focus so video doesn't cover the stroke (or leave a gap).
+  const activeOwnedFreePlay = Boolean(
+    items[activeIndex] && ownedFreePlayIds?.has(items[activeIndex].id),
+  );
+  useLayoutEffect(() => {
+    layoutFocus();
+  }, [activeOwnedFreePlay, layoutFocus]);
 
   useEffect(() => {
     if (compact) return;
@@ -839,18 +1481,28 @@ export function MobileCssCarousel({
 
   const holdStartedAt = useRef(0);
   const holdTarget = useRef(0);
-  const holdingRef = useRef(false);
 
   const holdSlideSpeed = () => {
     const t = Date.now() - holdStartedAt.current;
-    if (t < 80) return 360;
-    return Math.max(0, Math.round(300 - (t - 80) * 0.85));
+    // Coverflow needs a floor — speed 0 stacks 3D transitions and bounces at the ends.
+    const min = useCoverflow ? 160 : 0;
+    if (t < 80) return Math.max(min, 360);
+    return Math.max(min, Math.round(300 - (t - 80) * 0.85));
   };
 
   const stepHold = (dir: -1 | 1) => {
     const swiper = swiperRef.current;
     if (!swiper) return;
     const last = itemsRef.current.length - 1;
+    // Coverflow: one in-flight slide only, always from Swiper's real index.
+    if (useCoverflow) {
+      if (swiper.animating) return;
+      const current = swiper.activeIndex;
+      const dest = Math.max(0, Math.min(last, current + dir));
+      if (dest === current) return;
+      swiper.slideTo(dest, holdSlideSpeed());
+      return;
+    }
     const dest = Math.max(0, Math.min(last, holdTarget.current + dir));
     if (dest === holdTarget.current) return;
     holdTarget.current = dest;
@@ -859,6 +1511,20 @@ export function MobileCssCarousel({
 
   const holdPrev = useHoldRepeat(() => stepHold(-1));
   const holdNext = useHoldRepeat(() => stepHold(1));
+
+  const endArrowHold = (
+    hold: ReturnType<typeof useHoldRepeat>,
+    event: ReactPointerEvent<HTMLButtonElement>,
+  ) => {
+    holdingRef.current = false;
+    hold.onPointerUp(event);
+    // Don't unpark mid-coverflow — CTA would show on a tilted AABB then snap.
+    // transitionEnd (or a settled pointerup) brings the HUD back.
+    const swiper = swiperRef.current;
+    if (swiper && !swiper.destroyed && swiper.animating) return;
+    setParked(false);
+    attachActiveVideo();
+  };
 
   const bindArrowHold = (hold: ReturnType<typeof useHoldRepeat>) => ({
     ...hold,
@@ -872,16 +1538,10 @@ export function MobileCssCarousel({
       hold.onPointerDown(event);
     },
     onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      holdingRef.current = false;
-      hold.onPointerUp(event);
-      setParked(false);
-      attachActiveVideo();
+      endArrowHold(hold, event);
     },
     onPointerCancel: (event: ReactPointerEvent<HTMLButtonElement>) => {
-      holdingRef.current = false;
-      hold.onPointerCancel(event);
-      setParked(false);
-      attachActiveVideo();
+      endArrowHold(hold, event);
     },
   });
 
@@ -904,9 +1564,11 @@ export function MobileCssCarousel({
       ref={stageRef}
       className={`stage-packs mobile-css-carousel-stage${stageGlowClass}${
         influencerBackdrop ? " has-influencer-backdrop" : ""
-      }${compact ? " is-compact" : ""}${compact && items.length === 1 ? " is-single" : ""}`}
+      }${compact ? " is-compact" : ""}${flat ? " is-flat" : ""}${
+        compact && items.length === 1 ? " is-single" : ""
+      }${packTiltOn ? " is-motion-tilt" : ""}`}
     >
-      {compact ? null : influencerBackdrop ? (
+      {compact || flat ? null : influencerBackdrop ? (
         <div className="packs-influencer-backdrop" aria-hidden="true">
           {activeBackdropUrl ? (
             <img
@@ -924,47 +1586,83 @@ export function MobileCssCarousel({
       )}
       <div
         ref={shellRef}
-        className="mobile-css-carousel-shell"
+        className={[
+          "mobile-css-carousel-shell",
+          items.length > 1 && activeIndex > 0 ? "has-fade-left" : "",
+          items.length > 1 && activeIndex < items.length - 1
+            ? "has-fade-right"
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         onPointerUp={handleShellPointerUp}
       >
-        {compact && items.length > 1 ? (
-          <>
-            <button
-              type="button"
-              className="mc-popular-arrow is-prev"
-              aria-label="Previous packs"
-              disabled={activeIndex <= 0}
-              {...bindArrowHold(holdPrev)}
-            >
-              <ChevronLeft size={18} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className="mc-popular-arrow is-next"
-              aria-label="Next packs"
-              disabled={activeIndex >= items.length - 1}
-              {...bindArrowHold(holdNext)}
-            >
-              <ChevronRight size={18} aria-hidden />
-            </button>
-          </>
+        {/* Fixed behind the track — does not scroll with slides. */}
+        {flat && stageBackdropSrc ? (
+          <picture
+            className="mobile-css-carousel__stage-charcoal"
+            aria-hidden="true"
+          >
+            <img
+              src={stageBackdropSrc}
+              srcSet={
+                stageBackdropSrc2x
+                  ? `${stageBackdropSrc} 1x, ${stageBackdropSrc2x} 2x`
+                  : undefined
+              }
+              alt=""
+              width={347}
+              height={626}
+              decoding="async"
+              draggable={false}
+            />
+          </picture>
+        ) : flat && stageBackdropBase ? (
+          <picture
+            className="mobile-css-carousel__stage-charcoal"
+            aria-hidden="true"
+          >
+            <source
+              type="image/jxl"
+              srcSet={`${stageBackdropBase}@1x.jxl 1x, ${stageBackdropBase}@2x.jxl 2x`}
+            />
+            <source
+              type="image/webp"
+              srcSet={`${stageBackdropBase}@1x.webp 1x, ${stageBackdropBase}@2x.webp 2x`}
+            />
+            <img
+              src={`${stageBackdropBase}@1x.webp`}
+              srcSet={`${stageBackdropBase}@1x.webp 1x, ${stageBackdropBase}@2x.webp 2x`}
+              alt=""
+              width={347}
+              height={626}
+              decoding="async"
+              draggable={false}
+            />
+          </picture>
+        ) : null}
+        {flat && stageBackdropLabel ? (
+          <p ref={stageNameRef} className="mobile-css-carousel__stage-name">
+            {stageBackdropLabel}
+          </p>
         ) : null}
         <Swiper
+          key={flat ? "flat" : compact ? "compact" : "coverflow"}
           className="mobile-css-carousel"
-          modules={compact ? [] : [EffectCoverflow]}
-          effect={compact ? "slide" : "coverflow"}
+          modules={useCoverflow ? [EffectCoverflow] : []}
+          effect={useCoverflow ? "coverflow" : "slide"}
           grabCursor
           centeredSlides={!compact}
           slidesPerView="auto"
-          spaceBetween={compact ? 18 : -72}
-          slidesOffsetBefore={compact && items.length > 1 ? 80 : 0}
-          slidesOffsetAfter={compact && items.length > 1 ? 80 : 0}
+          spaceBetween={compact ? 18 : flat ? 16 : -72}
+          /* ~half (stage − slide) so ends clear the 84px chevrons and sit near center. */
+          slidesOffsetBefore={compact && items.length > 1 ? 116 : 0}
+          slidesOffsetAfter={compact && items.length > 1 ? 116 : 0}
           speed={720}
           resistanceRatio={0.85}
-          watchSlidesProgress
-          {...(compact
-            ? {}
-            : {
+          watchSlidesProgress={useCoverflow || flat}
+          {...(useCoverflow
+            ? {
                 coverflowEffect: {
                   rotate: 38,
                   stretch: -88,
@@ -973,11 +1671,17 @@ export function MobileCssCarousel({
                   modifier: 1,
                   slideShadows: false,
                 },
-              })}
+              }
+            : {})}
+          initialSlide={indexForSelectedId(items, selectedId)}
           onSwiper={onSwiper}
-          onProgress={applySlideDim}
+          onProgress={(swiper) => {
+            applySlideDim(swiper);
+            flattenSlideTransforms(swiper);
+          }}
           onSetTranslate={(swiper) => {
             applySlideDim(swiper);
+            flattenSlideTransforms(swiper);
             markReady(swiper);
           }}
           onSlideChange={(swiper) => {
@@ -996,6 +1700,16 @@ export function MobileCssCarousel({
               /* ignore */
             }
           }}
+          onSliderFirstMove={() => {
+            // Mouse + touch: park as soon as the track moves (touchStart alone
+            // can miss desktop grab drags / late starts).
+            setParked(true);
+            try {
+              liveVideoRef.current?.pause();
+            } catch {
+              /* ignore */
+            }
+          }}
           onTouchStart={() => {
             setParked(true);
             try {
@@ -1007,24 +1721,78 @@ export function MobileCssCarousel({
           onTransitionEnd={() => {
             if (holdingRef.current) return;
             setParked(false);
+            // Second frame: iOS can still report a mid-coverflow rect on the
+            // first transitionEnd paint — layoutFocus ignores those, then
+            // this retry applies the settled pack box before is-ready.
+            layoutFocus();
             attachActiveVideo();
+            window.requestAnimationFrame(() => {
+              if (holdingRef.current || parkedRef.current) return;
+              layoutFocus();
+              attachActiveVideo();
+            });
           }}
           onTouchEnd={(swiper) => {
-            if (holdingRef.current || swiper.animating) return;
-            setParked(false);
-            attachActiveVideo();
+            if (holdingRef.current) return;
+            // Snap/momentum often starts after touchEnd; unparking here left the
+            // focus HUD frozen while slides finished moving. Wait one frame —
+            // if a transition began, transitionEnd will reattach instead.
+            window.requestAnimationFrame(() => {
+              if (holdingRef.current || swiper.animating || swiper.destroyed) {
+                return;
+              }
+              setParked(false);
+              layoutFocus();
+              attachActiveVideo();
+            });
           }}
           preventClicks={false}
           preventClicksPropagation={false}
-          noSwipingSelector=".mobile-css-carousel__hud, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
+          noSwipingSelector=".mobile-css-carousel__hud, .mobile-css-carousel__glass-plate, .mobile-css-carousel__glass-plate-btn, .mcp-photo-play-cta-css-wrap, .coverflow-buy-pack-cta, .coverflow-buy-confirm, .coverflow-cart-remove-confirm, .cta-button, .mc-popular-arrow"
         >
           {items.map((item, index) => {
             void pocketTick;
             const near = Math.abs(index - activeIndex) <= 2;
+            const ownedFreePlay = Boolean(ownedFreePlayIds?.has(item.id));
+            const locked = Boolean(lockedMotionIds?.has(item.id));
             return (
               <SwiperSlide key={item.id}>
-                <div className="mobile-css-carousel__pack">
-                  {item.posterUrl ? (
+                <div
+                  className={[
+                    "mobile-css-carousel__pack",
+                    ownedFreePlay ? "is-owned-free-play" : "",
+                    locked ? "is-locked" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {item.posterArtBase ? (
+                    <picture className="mobile-css-carousel__poster-art">
+                      <source
+                        type="image/jxl"
+                        srcSet={`${item.posterArtBase}.jxl 1x, ${item.posterArtBase}@2x.jxl 2x`}
+                      />
+                      <source
+                        type="image/webp"
+                        srcSet={`${item.posterArtBase}.webp 1x, ${item.posterArtBase}@2x.webp 2x`}
+                      />
+                      <img
+                        className="mobile-css-carousel__poster"
+                        src={`${item.posterArtBase}.webp`}
+                        srcSet={`${item.posterArtBase}.webp 1x, ${item.posterArtBase}@2x.webp 2x`}
+                        alt=""
+                        width={242}
+                        height={300}
+                        draggable={false}
+                        decoding="async"
+                        loading={near ? "eager" : "lazy"}
+                        onLoad={() => {
+                          const swiper = swiperRef.current;
+                          if (swiper) markReady(swiper);
+                        }}
+                      />
+                    </picture>
+                  ) : item.posterUrl ? (
                     <img
                       className="mobile-css-carousel__poster"
                       src={item.posterUrl}
@@ -1037,6 +1805,44 @@ export function MobileCssCarousel({
                         if (swiper) markReady(swiper);
                       }}
                     />
+                  ) : null}
+                  {locked ? (
+                    <div
+                      className="mobile-css-carousel__lock-shade"
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  {locked ? (
+                    <MotionTeaseBanner
+                      theme={motionTheme}
+                      posterUrl={
+                        item.posterUrl ||
+                        (item.posterArtBase
+                          ? `${item.posterArtBase}.webp`
+                          : "")
+                      }
+                    />
+                  ) : null}
+                  {flat && (slideCta === "view" || slideCta === "play") ? (
+                    <div className="mobile-css-carousel__glass-plate">
+                      <CtaButton
+                        forceCss
+                        cssTone="black"
+                        fillParent
+                        type="button"
+                        label={slideCta === "play" ? "Play" : "View Theme"}
+                        costAmount={null}
+                        labelColor="#f0f0f0"
+                        strokeWidth={1}
+                        cornerRadius={16}
+                        className="mobile-css-carousel__glass-plate-btn swiper-no-swiping"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (slideCta === "view") onViewRef.current?.(item);
+                          else onSelect?.(item);
+                        }}
+                      />
+                    </div>
                   ) : null}
                   {compact ? null : (
                     <div className="mobile-css-carousel__dim" aria-hidden="true" />
@@ -1053,23 +1859,49 @@ export function MobileCssCarousel({
           })}
         </Swiper>
         <div ref={focusRef} className="mobile-css-carousel__focus is-parked">
-          <video
-            ref={liveVideoRef}
-            className="mobile-css-carousel__video"
-            muted
-            loop
-            playsInline
-            preload="none"
-            aria-hidden
-            onLoadedData={() => {
-              if (parkedRef.current) return;
-              focusRef.current?.classList.add("is-ready");
-              syncLiveClass();
-              const swiper = swiperRef.current;
-              if (swiper) markReady(swiper);
-            }}
-          />
-          {compact ? null : items[activeIndex] ? (
+          <div className="mobile-css-carousel__focus-media">
+            <video
+              ref={liveVideoRef}
+              className="mobile-css-carousel__video"
+              muted
+              loop
+              playsInline
+              preload="none"
+              aria-hidden
+              onLoadedData={() => {
+                if (parkedRef.current) return;
+                layoutFocus();
+                const focus = focusRef.current;
+                // Don't reveal until the focus box is a real pack size (iOS).
+                if (focus && focus.offsetHeight > 0 && focus.offsetHeight < 80) {
+                  return;
+                }
+                focus?.classList.add("is-ready");
+                syncLiveClass();
+                const swiper = swiperRef.current;
+                if (swiper) markReady(swiper);
+              }}
+            />
+          </div>
+          {/* Top of focus rect — fades with HUD is-visible (same CTA entrance). */}
+          {lockedMotionIds != null &&
+          slideCta === "play" &&
+          items[activeIndex] ? (
+            <div
+              key={`lock-${items[activeIndex].id}`}
+              className="mobile-css-carousel__lock-banner is-focus"
+            >
+              <LockStatusBanner
+                status={
+                  lockedMotionIds.has(items[activeIndex].id)
+                    ? "locked"
+                    : "unlocked"
+                }
+              />
+            </div>
+          ) : null}
+          {/* Flat profile: View Theme lives on each pack plate, not the focus HUD. */}
+          {compact || flat ? null : items[activeIndex] ? (
             <PackSlideHud
               key={items[activeIndex].id}
               item={items[activeIndex]}
@@ -1082,11 +1914,22 @@ export function MobileCssCarousel({
               buyConfirmLeaving={buyConfirmLeaving}
               buyQuantity={buyQuantity}
               confirmingAdd={confirmingAdd}
+              slideCta={slideCta}
+              freePlayMode={freePlayMode}
+              lockStatus={
+                lockedMotionIds != null && slideCta === "play"
+                  ? lockedMotionIds.has(items[activeIndex].id)
+                    ? "locked"
+                    : "unlocked"
+                  : null
+              }
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}
               onBuyQuantityChange={setBuyQuantity}
               onAddToPocket={addActiveToPocket}
+              onView={(pack) => onViewRef.current?.(pack)}
+              onUnlock={(pack) => onUnlockRef.current?.(pack)}
               onBuyConfirmLeaveEnd={() => {
                 buyConfirmLeavingRef.current = false;
                 setBuyConfirmLeaving(false);
@@ -1095,6 +1938,31 @@ export function MobileCssCarousel({
             />
           ) : null}
         </div>
+        {/* After the track so chevrons paint above packs / live video. */}
+        {items.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="mc-popular-arrow is-prev glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+              aria-label={
+                slideCta === "view" ? "Previous themes" : "Previous packs"
+              }
+              disabled={activeIndex <= 0}
+              {...bindArrowHold(holdPrev)}
+            >
+              <ChevronLeft className="size-5" aria-hidden />
+            </button>
+            <button
+              type="button"
+              className="mc-popular-arrow is-next glass glass-strength-50 glass-chromatic-50 glass-blur-1 glass-saturation-150 glass-brightness-35 glass-surface"
+              aria-label={slideCta === "view" ? "Next themes" : "Next packs"}
+              disabled={activeIndex >= items.length - 1}
+              {...bindArrowHold(holdNext)}
+            >
+              <ChevronRight className="size-5" aria-hidden />
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

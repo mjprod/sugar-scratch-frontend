@@ -58,10 +58,30 @@ export const DEFAULT_CARD_TOP_SCALE: CardTopScale = {
   z: 1,
 };
 
+/**
+ * Locked pack-open hinge (bottom-right). Seal peels up and to the right.
+ * Tuned on /card-open-test — do not drift via lab localStorage in prod.
+ */
 export const DEFAULT_CARD_TOP_PIVOT: CardTopPivot = {
+  x: 1.1102600696554912,
+  y: 0,
+  z: 2.108327681772366,
+};
+
+/**
+ * Tear Lottie sits on the seal, not on the 3D hinge corner.
+ * Keep this stable when the rotation pivot moves.
+ */
+export const DEFAULT_CARD_TOP_LOTTIE_ANCHOR: CardTopPivot = {
   x: 0.938762510760437,
   y: 0,
   z: 0.783224879081698,
+};
+
+export const DEFAULT_CARD_TOP_LOTTIE_OFFSET: CardTopVec3 = {
+  x: -0.97,
+  y: 2.26,
+  z: -1.92,
 };
 
 export const DEFAULT_CARD_TOP_TEAR_DURATION_MS = 1000;
@@ -78,10 +98,16 @@ export const DEFAULT_CARD_TOP_DEBUG: CardTopDebugState = {
   tearDurationMs: DEFAULT_CARD_TOP_TEAR_DURATION_MS,
   selectedTearKeyId: "tear-1",
   packOpenRequested: false,
-  lottieOffset: { x: -0.97, y: 2.26, z: -1.92 },
+  lottieOffset: { ...DEFAULT_CARD_TOP_LOTTIE_OFFSET },
 };
 
-const STORAGE_KEY = "sugar.coverflowV2.cardTop.v10";
+/** Bump when shipping new baked pack-open defaults so stale lab state drops. */
+const STORAGE_KEY = "sugar.coverflowV2.cardTop.v14";
+
+/** Lab-only persistence — prod always ships DEFAULT_CARD_TOP_*. */
+function allowLabPersistence() {
+  return import.meta.env?.DEV === true;
+}
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -143,24 +169,36 @@ function normalizeState(
     packOpenRequested: hydrateEphemeral
       ? false
       : parsed?.packOpenRequested === true,
-    lottieOffset: normalizeVec3(parsed?.lottieOffset, {
-      x: -0.97,
-      y: 2.26,
-      z: -1.92,
-    }),
+    lottieOffset: normalizeVec3(
+      parsed?.lottieOffset,
+      DEFAULT_CARD_TOP_LOTTIE_OFFSET,
+    ),
+  };
+}
+
+function cloneDefaultCardTopDebug(): CardTopDebugState {
+  return {
+    ...DEFAULT_CARD_TOP_DEBUG,
+    position: { ...DEFAULT_CARD_TOP_POSITION },
+    rotation: { ...DEFAULT_CARD_TOP_ROTATION },
+    scale: { ...DEFAULT_CARD_TOP_SCALE },
+    pivot: { ...DEFAULT_CARD_TOP_PIVOT },
+    lottieOffset: { ...DEFAULT_CARD_TOP_LOTTIE_OFFSET },
   };
 }
 
 function loadStoredState(): CardTopDebugState {
-  if (typeof window === "undefined") return { ...DEFAULT_CARD_TOP_DEBUG };
+  if (!allowLabPersistence() || typeof window === "undefined") {
+    return cloneDefaultCardTopDebug();
+  }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_CARD_TOP_DEBUG };
+    if (!raw) return cloneDefaultCardTopDebug();
     return normalizeState(JSON.parse(raw) as Partial<CardTopDebugState>, {
       hydrateEphemeral: true,
     });
   } catch {
-    return { ...DEFAULT_CARD_TOP_DEBUG };
+    return cloneDefaultCardTopDebug();
   }
 }
 
@@ -171,7 +209,7 @@ let measuredBounds: CardTopBounds | null = null;
 const boundsListeners = new Set<(bounds: CardTopBounds | null) => void>();
 
 function persist(state: CardTopDebugState) {
-  if (typeof window === "undefined") return;
+  if (!allowLabPersistence() || typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
@@ -336,16 +374,18 @@ export function pivotFromPreset(
 ): CardTopPivot {
   if (preset === "origin" || !bounds) return { ...DEFAULT_CARD_TOP_PIVOT };
   if (preset === "center") return { ...bounds.center };
+  // cardTop is long in Z (pack width) and short in X (foil thickness).
+  // Left/right hinges sit on opposite Z ends; top/bottom use Y.
   if (preset === "bottom-left") {
     return { x: bounds.min.x, y: bounds.min.y, z: bounds.min.z };
   }
   if (preset === "bottom-right") {
-    return { x: bounds.max.x, y: bounds.min.y, z: bounds.min.z };
+    return { x: bounds.max.x, y: bounds.min.y, z: bounds.max.z };
   }
   if (preset === "top-left") {
     return { x: bounds.min.x, y: bounds.max.y, z: bounds.min.z };
   }
-  return { x: bounds.max.x, y: bounds.max.y, z: bounds.min.z };
+  return { x: bounds.max.x, y: bounds.max.y, z: bounds.max.z };
 }
 
 export function applyCardTopPivotPreset(preset: CardTopPivotPreset) {

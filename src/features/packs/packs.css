@@ -1057,14 +1057,13 @@
 	    font-size: var(--text-caption);
 	  }
 
-/* Sit just under the pack, still above the bottom nav + Collection FAB. */
+/* Sit under the pack, but never under the dock / Collection FAB. */
 			  .cart-continue {
-				    bottom: calc(12.5dvh + env(safe-area-inset-bottom, 0px));
+				    bottom: max(
+				      var(--app-footer-offset),
+				      calc(12.5dvh + env(safe-area-inset-bottom, 0px))
+				    );
 			  }
-
-  .coverflow-nav-chevron {
-    display: none;
-  }
 
   .coverflow-stage {
     height: 100%;

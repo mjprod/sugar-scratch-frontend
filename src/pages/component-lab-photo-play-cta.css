@@ -1,0 +1,68 @@
+/**
+ * Component-lab workshop chrome for the CSS photo play CTA.
+ * Shared plate styles: import mcp-photo-play-cta-css.css from the page.
+ */
+
+.mcp-photo-play-cta-lab-card {
+  position: relative;
+  width: 109px;
+  height: 195px;
+  overflow: visible;
+  border-radius: 4px;
+  background: #121212;
+}
+
+.mcp-photo-play-cta-lab-card > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+  filter: grayscale(1);
+}
+
+/* Lab override: live CTA is absolute in production cells; keep that here. */
+.mcp-photo-play-cta-lab-card .mcp-photo-play-cta {
+  position: absolute;
+  left: 50%;
+  bottom: 0.3rem;
+  transform: translateX(-50%);
+}
+
+/* Lab: wrap places itself on the card (production uses .mcp-photo-play-cta). */
+.mcp-photo-play-cta-lab-card .mcp-photo-play-cta-css-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 0.3rem;
+  z-index: 3;
+  transform: translateX(-50%);
+}
+
+/*
+ * Color variants live in mcp-photo-play-cta-css.css
+ * (--gold / --purple / --black). Lab dropdown toggles those classes.
+ */
+
+/*
+ * sliderCTACSS — coverflow Buy Pack CSS twin.
+ * Plate: .mcp-photo-play-cta-css--slider in mcp-photo-play-cta-css.css
+ * Tweak size / stack / type here while iterating in /component-lab.
+ */
+.mcp-photo-play-cta-css-wrap--slider .mcp-photo-play-cta-css--slider {
+  /* Lab override hook — leave empty until you need a one-off. */
+}
+
+/* Danger / Delete account CSS CTA slot. */
+.mcp-photo-play-cta-lab-danger {
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+}
+
+.mcp-photo-play-cta-lab-danger .mcp-photo-play-cta-css-wrap,
+.mcp-photo-play-cta-lab-danger .mcp-photo-play-cta-css {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  box-sizing: border-box;
+}

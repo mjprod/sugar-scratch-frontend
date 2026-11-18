@@ -256,5 +256,6 @@ export function toPurchasePack(item: HomeFeedCreator) {
     packName: item.packName,
     price: `${item.diamondCost} Diamonds`,
     creator: item.creatorName,
+    creatorId: item.creatorId,
   };
 }

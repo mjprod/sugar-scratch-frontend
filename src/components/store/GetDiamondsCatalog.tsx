@@ -2,31 +2,71 @@ import {
   useEffect,
   useRef,
   useState,
+  type CSSProperties,
+  type ReactNode,
 } from "react";
 import {
   Check,
-  Gift,
-  Info,
-  Loader2,
-  Play,
   ShieldCheck,
   Zap,
 } from "lucide-react";
+import { EffectCoverflow } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
 import { HistoryPageHeader } from "@/components/history/HistoryShared";
-import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
+import { CurrencyPackCard } from "@/components/currency-pack-card/CurrencyPackCard";
 import { HubRedeemSection } from "@/components/rewards/HubRedeemSection";
 import { CoinLottie } from "@/components/ui/CoinLottie";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import { useMotionOptional } from "@/features/collection/context/MotionContext";
 import type { RedeemReward } from "@/services/redeem";
 import {
   COIN_EXCHANGE_OPTIONS,
   DAILY_AD_LIMIT,
+  type CoinExchangeOption,
+  type StoreBadge,
   type StoreProduct,
 } from "@/services/store";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
 import "./GetDiamondsScreen.css";
 
-const STORE_SQUIRCLE_CTA = ctaButtonPropsFromTemplate("squircleCTA");
+/** Hero band parallax — same family as SpotlightBanner / shop influencer backdrop. */
+const HERO_TILT_MAX_X_PX = 36;
+const HERO_TILT_MAX_Y_PX = 40;
+const HERO_TILT_GAMMA_RANGE = 28;
+const HERO_TILT_BETA_RANGE = 24;
+const HERO_TILT_LERP = 0.05;
+
+function clampNorm(n: number) {
+  return Math.max(-1, Math.min(1, n));
+}
+
+function PackagesShell({
+  children,
+  fadeLeft = false,
+  fadeRight = false,
+}: {
+  children: ReactNode;
+  fadeLeft?: boolean;
+  fadeRight?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "get-diamonds-packages",
+        fadeLeft ? "has-fade-left" : "",
+        fadeRight ? "has-fade-right" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
+type CashCurrency = "diamonds" | "coins";
 
 const TRUST_ITEMS = [
   { icon: ShieldCheck, label: "Secure payment" },
@@ -47,7 +87,7 @@ export type GetDiamondsFlowStep =
 export function GetDiamondsCatalog({
   products,
   coinBalance,
-  adClaimsToday,
+  adClaimsToday = 0,
   busy,
   activeProductId,
   flowStep,
@@ -62,7 +102,7 @@ export function GetDiamondsCatalog({
 }: {
   products: StoreProduct[];
   coinBalance: number;
-  adClaimsToday: number;
+  adClaimsToday?: number;
   busy: boolean;
   activeProductId?: string;
   flowStep: GetDiamondsFlowStep;
@@ -85,6 +125,7 @@ export function GetDiamondsCatalog({
   }) => void;
 }) {
   const { authed } = useAuth();
+  const [cashCurrency, setCashCurrency] = useState<CashCurrency>("diamonds");
   useEffect(() => {
     const sync = () => {
       document.documentElement.classList.toggle(
@@ -99,9 +140,12 @@ export function GetDiamondsCatalog({
       document.documentElement.classList.remove("get-diamonds-anims-off");
     };
   }, []);
-  const ads = products.filter((p) => p.kind === "rewarded-ad");
-  const packs = products.filter((p) => p.kind === "diamonds");
-  const adProduct = ads[0] ?? null;
+  const adProduct = products.find((p) => p.kind === "rewarded-ad") ?? null;
+  const diamondPacks = products.filter((p) => p.kind === "diamonds");
+  // Watch Ad leads the Diamonds coverflow (before cash packs).
+  const diamondSlides = adProduct
+    ? [adProduct, ...diamondPacks]
+    : diamondPacks;
   const adRemaining = Math.max(0, DAILY_AD_LIMIT - adClaimsToday);
 
   function isProcessing(productId: string) {
@@ -115,57 +159,44 @@ export function GetDiamondsCatalog({
   }
 
   return (
-    <div className="get-diamonds-stack">
-      <HistoryPageHeader title="Buy Diamonds" onBack={onBack} backLabel={backLabel} />
+    <div className="get-diamonds-stack" data-currency={cashCurrency}>
+      <HistoryPageHeader
+        title={cashCurrency === "coins" ? "Coin Swap" : "Buy Diamonds"}
+        onBack={onBack}
+        backLabel={backLabel}
+      />
       <div className="get-diamonds-ambient" aria-hidden="true">
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--a" />
         <span className="get-diamonds-ambient__orb get-diamonds-ambient__orb--b" />
         <span className="get-diamonds-ambient__sparkle" />
       </div>
+
+      <section
+        aria-label={
+          cashCurrency === "coins" ? "Coin Swap" : "Buy with Cash"
+        }
+      >
+        <CashCurrencyToggle value={cashCurrency} onChange={setCashCurrency} />
+        {cashCurrency === "coins" ? (
+          <CoinSwapCarousel
+            options={COIN_EXCHANGE_OPTIONS}
+            busy={busy}
+            exchangingId={exchangingId}
+            coinBalance={coinBalance}
+            onSwap={onCoinExchange}
+          />
+        ) : (
+          <PackageCarousel
+            packs={diamondSlides}
+            busy={busy}
+            adExhausted={adRemaining <= 0}
+            isProcessing={isProcessing}
+            onSelect={onSelect}
+          />
+        )}
+      </section>
+
       <GetDiamondsHeroBand />
-
-      <section aria-label="Buy with Cash">
-        <div className="get-diamonds-packages">
-          {packs.map((product) => (
-            <PackageCard
-              key={product.id}
-              product={product}
-              processing={isProcessing(product.id)}
-              disabled={busy}
-              onBuy={() => onSelect(product)}
-            />
-          ))}
-        </div>
-      </section>
-
-      <TrustRow />
-
-      <section aria-labelledby="earn-free-heading">
-        <header className="get-diamonds-section__head">
-          <h2 id="earn-free-heading" className="get-diamonds-section__title">
-            <Gift className="size-4" aria-hidden="true" />
-            Earn Diamonds for Free
-          </h2>
-        </header>
-        <div className="get-diamonds-earn">
-          {adProduct ? (
-            <WatchAdPanel
-              product={adProduct}
-              processing={isProcessing(adProduct.id)}
-              disabled={authed ? busy || adRemaining <= 0 : false}
-              onWatch={() => onSelect(adProduct)}
-            />
-          ) : null}
-          {authed ? (
-            <ExchangePanel
-              coinBalance={coinBalance}
-              exchangingId={exchangingId}
-              disabled={busy}
-              onExchange={onCoinExchange}
-            />
-          ) : null}
-        </div>
-      </section>
 
       {authed && onDiamondReward && onPackReward && onOpenPack ? (
         <HubRedeemSection
@@ -175,13 +206,380 @@ export function GetDiamondsCatalog({
           onOpenPack={onOpenPack}
         />
       ) : null}
+
+      <TrustRow />
     </div>
+  );
+}
+
+function CashCurrencyToggle({
+  value,
+  onChange,
+}: {
+  value: CashCurrency;
+  onChange: (next: CashCurrency) => void;
+}) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const diamondsRef = useRef<HTMLButtonElement>(null);
+  const coinsRef = useRef<HTMLButtonElement>(null);
+  const suppressClickRef = useRef(false);
+  const dragRef = useRef<{
+    pointerId: number;
+    grabOffsetX: number;
+    startX: number;
+    moved: boolean;
+    width: number;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [bubble, setBubble] = useState({ x: 0, w: 0, ready: false });
+
+  const buttonFor = (next: CashCurrency) =>
+    next === "coins" ? coinsRef.current : diamondsRef.current;
+
+  const syncBubble = (next: CashCurrency = value) => {
+    const root = rootRef.current;
+    const btn = buttonFor(next);
+    if (!root || !btn) return;
+    const rootRect = root.getBoundingClientRect();
+    const btnRect = btn.getBoundingClientRect();
+    setBubble({
+      x: btnRect.left - rootRect.left,
+      w: btnRect.width,
+      ready: true,
+    });
+  };
+
+  useEffect(() => {
+    syncBubble(value);
+  }, [value]);
+
+  useEffect(() => {
+    const onResize = () => syncBubble(value);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [value]);
+
+  function nearestCurrency(clientX: number): CashCurrency {
+    const diamonds = diamondsRef.current?.getBoundingClientRect();
+    const coins = coinsRef.current?.getBoundingClientRect();
+    if (!diamonds || !coins) return value;
+    const dDist = Math.abs(clientX - (diamonds.left + diamonds.width / 2));
+    const cDist = Math.abs(clientX - (coins.left + coins.width / 2));
+    const dHit = clientX >= diamonds.left && clientX <= diamonds.right;
+    const cHit = clientX >= coins.left && clientX <= coins.right;
+    // Same scoring as dock `findNearestTab`: prefer hit, else nearest center.
+    const dScore = dHit ? dDist * 0.25 : dDist;
+    const cScore = cHit ? cDist * 0.25 : cDist;
+    return dScore <= cScore ? "diamonds" : "coins";
+  }
+
+  function select(next: CashCurrency) {
+    if (suppressClickRef.current) return;
+    onChange(next);
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className={[
+        "get-diamonds-currency-toggle",
+        dragging ? "is-dragging" : "",
+        bubble.ready ? "is-bubble-ready" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      data-value={value}
+      role="tablist"
+      aria-label="Currency to buy"
+      style={
+        {
+          "--currency-bubble-x": `${bubble.x}px`,
+          "--currency-bubble-w": `${bubble.w}px`,
+        } as CSSProperties
+      }
+    >
+      <span
+        className="get-diamonds-currency-toggle__bubble-glow"
+        aria-hidden
+      />
+      <span className="get-diamonds-currency-toggle__bubble" aria-hidden />
+      <div
+        className="get-diamonds-currency-toggle__bubble-handle"
+        role="slider"
+        tabIndex={0}
+        aria-label="Drag currency indicator"
+        aria-valuetext={value === "coins" ? "Coins" : "Diamonds"}
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          const root = rootRef.current;
+          if (!root || !bubble.ready) return;
+          const rootRect = root.getBoundingClientRect();
+          dragRef.current = {
+            pointerId: event.pointerId,
+            grabOffsetX: event.clientX - rootRect.left - bubble.x,
+            startX: event.clientX,
+            moved: false,
+            width: bubble.w,
+          };
+          event.currentTarget.setPointerCapture(event.pointerId);
+          setDragging(true);
+          event.preventDefault();
+        }}
+        onPointerMove={(event) => {
+          const drag = dragRef.current;
+          const root = rootRef.current;
+          if (!drag || !root || event.pointerId !== drag.pointerId) return;
+          if (!drag.moved && Math.abs(event.clientX - drag.startX) > 4) {
+            drag.moved = true;
+          }
+          const rootRect = root.getBoundingClientRect();
+          const minX = diamondsRef.current
+            ? diamondsRef.current.getBoundingClientRect().left - rootRect.left
+            : 0;
+          const maxX = coinsRef.current
+            ? coinsRef.current.getBoundingClientRect().left - rootRect.left
+            : minX;
+          const nextX = Math.min(
+            maxX,
+            Math.max(minX, event.clientX - rootRect.left - drag.grabOffsetX),
+          );
+          setBubble((prev) => ({
+            ...prev,
+            x: nextX,
+            w: drag.width,
+            ready: true,
+          }));
+        }}
+        onPointerUp={(event) => {
+          const drag = dragRef.current;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          const moved = drag.moved;
+          dragRef.current = null;
+          setDragging(false);
+          try {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          } catch {
+            /* already released */
+          }
+          if (moved) {
+            suppressClickRef.current = true;
+            window.setTimeout(() => {
+              suppressClickRef.current = false;
+            }, 0);
+            const next = nearestCurrency(event.clientX);
+            onChange(next);
+            syncBubble(next);
+            return;
+          }
+          syncBubble(value);
+        }}
+        onPointerCancel={() => {
+          dragRef.current = null;
+          setDragging(false);
+          syncBubble(value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowRight" || event.key === "ArrowLeft") {
+            event.preventDefault();
+            onChange(event.key === "ArrowRight" ? "coins" : "diamonds");
+          }
+        }}
+      />
+      <button
+        ref={diamondsRef}
+        type="button"
+        role="tab"
+        className={[
+          "get-diamonds-currency-toggle__btn",
+          value === "diamonds" ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-selected={value === "diamonds"}
+        onClick={() => select("diamonds")}
+      >
+        <DiamondLottie size={16} aria-hidden />
+        Diamonds
+      </button>
+      <button
+        ref={coinsRef}
+        type="button"
+        role="tab"
+        className={[
+          "get-diamonds-currency-toggle__btn",
+          value === "coins" ? "is-active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        aria-selected={value === "coins"}
+        onClick={() => select("coins")}
+      >
+        <CoinLottie size={16} aria-hidden />
+        Coins
+      </button>
+    </div>
+  );
+}
+
+const PACKAGE_COVERFLOW = {
+  rotate: 38,
+  stretch: -70,
+  depth: 64,
+  scale: 0.9,
+  modifier: 1,
+  slideShadows: false,
+} as const;
+
+/** Same Swiper coverflow pose as homepage `MobileCssCarousel`. */
+function PackageCarousel({
+  packs,
+  busy,
+  adExhausted,
+  isProcessing,
+  onSelect,
+}: {
+  packs: StoreProduct[];
+  busy: boolean;
+  adExhausted: boolean;
+  isProcessing: (productId: string) => boolean;
+  onSelect: (product: StoreProduct) => void;
+}) {
+  const initialSlide = (() => {
+    const best = packs.findIndex((p) => p.badge === "Best Value");
+    return best >= 0 ? best : Math.floor(packs.length / 2);
+  })();
+  const [activeIndex, setActiveIndex] = useState(initialSlide);
+  const [swiping, setSwiping] = useState(false);
+
+  if (packs.length === 0) return null;
+
+  return (
+    <PackagesShell
+      fadeLeft={activeIndex > 0}
+      fadeRight={activeIndex < packs.length - 1}
+    >
+      <Swiper
+        className="get-diamonds-packages-swiper"
+        modules={[EffectCoverflow]}
+        effect="coverflow"
+        grabCursor
+        centeredSlides
+        slidesPerView="auto"
+        spaceBetween={-58}
+        speed={720}
+        resistanceRatio={0.85}
+        watchSlidesProgress
+        noSwipingSelector=".currency-pack-card__buy, .cta-button, .mcp-photo-play-cta-css-wrap"
+        coverflowEffect={PACKAGE_COVERFLOW}
+        initialSlide={initialSlide}
+        onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+        onTouchStart={() => setSwiping(true)}
+        onTouchEnd={() => setSwiping(false)}
+        onTransitionEnd={() => setSwiping(false)}
+      >
+        {packs.map((product, index) => (
+          <SwiperSlide key={product.id} className="get-diamonds-packages-slide">
+            <PackageCard
+              product={product}
+              processing={isProcessing(product.id)}
+              disabled={
+                busy ||
+                (product.kind === "rewarded-ad" && adExhausted)
+              }
+              iconsAnimated={!swiping && index === activeIndex}
+              onBuy={() => onSelect(product)}
+            />
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </PackagesShell>
+  );
+}
+
+function coinSwapBadge(index: number, total: number): StoreBadge | null {
+  if (index === Math.floor(total / 2)) return "Best Value";
+  if (index === 1) return "Popular";
+  return null;
+}
+
+/** Coin Swap coverflow — whole-coin costs from exchange tiers (not cash decimals). */
+function CoinSwapCarousel({
+  options,
+  busy,
+  exchangingId,
+  coinBalance,
+  onSwap,
+}: {
+  options: readonly CoinExchangeOption[];
+  busy: boolean;
+  exchangingId?: string | null;
+  coinBalance: number;
+  onSwap: (diamonds: number, coins: number) => boolean | Promise<boolean>;
+}) {
+  const initialSlide = Math.floor(options.length / 2);
+  const [activeIndex, setActiveIndex] = useState(initialSlide);
+  const [swiping, setSwiping] = useState(false);
+
+  if (options.length === 0) return null;
+
+  return (
+    <PackagesShell
+      fadeLeft={activeIndex > 0}
+      fadeRight={activeIndex < options.length - 1}
+    >
+      <Swiper
+        className="get-diamonds-packages-swiper"
+        modules={[EffectCoverflow]}
+        effect="coverflow"
+        grabCursor
+        centeredSlides
+        slidesPerView="auto"
+        spaceBetween={-58}
+        speed={720}
+        resistanceRatio={0.85}
+        watchSlidesProgress
+        noSwipingSelector=".currency-pack-card__buy, .cta-button, .mcp-photo-play-cta-css-wrap"
+        coverflowEffect={PACKAGE_COVERFLOW}
+        initialSlide={initialSlide}
+        onSlideChange={(swiper) => setActiveIndex(swiper.activeIndex)}
+        onTouchStart={() => setSwiping(true)}
+        onTouchEnd={() => setSwiping(false)}
+        onTransitionEnd={() => setSwiping(false)}
+      >
+        {options.map((option, index) => {
+          const badge = coinSwapBadge(index, options.length);
+          const affordable = coinBalance >= option.coins;
+          return (
+            <SwiperSlide
+              key={option.id}
+              className="get-diamonds-packages-slide"
+            >
+              <CurrencyPackCard
+                currency="coins"
+                amount={option.diamonds}
+                priceLabel={option.coins.toLocaleString("en-US")}
+                badge={badge}
+                featured={badge === "Best Value"}
+                processing={exchangingId === option.id}
+                disabled={busy || !affordable}
+                iconsAnimated={!swiping && index === activeIndex}
+                onBuy={() => {
+                  void onSwap(option.diamonds, option.coins);
+                }}
+              />
+            </SwiperSlide>
+          );
+        })}
+      </Swiper>
+    </PackagesShell>
   );
 }
 
 function GetDiamondsHeroBand() {
   const rootRef = useRef<HTMLDivElement>(null);
   const [motionLive, setMotionLive] = useState(true);
+  const motion = useMotionOptional();
+  const tiltOn = Boolean(motion?.enabled && motion.permission === "granted");
 
   useEffect(() => {
     const root = rootRef.current;
@@ -194,32 +592,55 @@ function GetDiamondsHeroBand() {
     return () => io.disconnect();
   }, []);
 
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const clear = () => {
+      root.style.setProperty("--hero-tilt-x", "0px");
+      root.style.setProperty("--hero-tilt-y", "0px");
+    };
+
+    if (
+      !tiltOn ||
+      !motion ||
+      !motionLive ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      clear();
+      return;
+    }
+
+    let x = 0;
+    let y = 0;
+    return motion.subscribe((sample) => {
+      if (!sample.hasSample) return;
+      const yawNorm = clampNorm(sample.gamma / HERO_TILT_GAMMA_RANGE);
+      const pitchNorm = clampNorm((sample.beta - 55) / HERO_TILT_BETA_RANGE);
+      // Invert so phone-left / tip-toward shifts the scene the other way (parallax).
+      const targetX = -yawNorm * HERO_TILT_MAX_X_PX;
+      const targetY = -pitchNorm * HERO_TILT_MAX_Y_PX;
+      x += (targetX - x) * HERO_TILT_LERP;
+      y += (targetY - y) * HERO_TILT_LERP;
+      root.style.setProperty("--hero-tilt-x", `${x.toFixed(2)}px`);
+      root.style.setProperty("--hero-tilt-y", `${y.toFixed(2)}px`);
+    });
+  }, [motion, motionLive, tiltOn]);
+
   return (
     <div
       ref={rootRef}
       className={[
         "get-diamonds-hero-band",
+        "get-diamonds-hero-band--art",
         motionLive ? "" : "is-paused",
       ]
         .filter(Boolean)
         .join(" ")}
+      aria-hidden="true"
     >
-      <header className="get-diamonds-hero get-diamonds-hero--band">
-        <div className="get-diamonds-hero__copy-block">
-          <h2 className="get-diamonds-hero__title">
-            Get Diamonds{" "}
-            <span className="get-diamonds-hero__accent" aria-hidden="true">
-              <DiamondLottie size="1em" />
-            </span>
-          </h2>
-          <p className="get-diamonds-hero__copy">
-            Diamonds are used to buy Motion Card Packs and unlock exclusive
-            rewards.
-          </p>
-        </div>
-      </header>
-      <span className="get-diamonds-hero-band__sheen" aria-hidden="true" />
-      <div className="get-diamonds-hero-band__glow-wrap" aria-hidden="true">
+      <div className="get-diamonds-hero-band__bg" />
+      <div className="get-diamonds-hero-band__glow-wrap">
         <img
           className="get-diamonds-hero-band__glow"
           src="/images/store/glowCircle1x.webp"
@@ -228,7 +649,7 @@ function GetDiamondsHeroBand() {
           decoding="async"
         />
       </div>
-      <div className="get-diamonds-hero-band__float-wrap" aria-hidden="true">
+      <div className="get-diamonds-hero-band__float-wrap">
         <img
           className="get-diamonds-hero-band__float"
           src="/images/store/floatingDiamonds.webp"
@@ -242,7 +663,6 @@ function GetDiamondsHeroBand() {
         src="/images/store/diamondWoman1x.webp"
         srcSet="/images/store/diamondWoman1x.webp 1x, /images/store/diamondWoman2x.webp 2x"
         alt=""
-        fetchPriority="high"
         decoding="async"
       />
     </div>
@@ -269,235 +689,29 @@ function PackageCard({
   product,
   processing,
   disabled,
+  iconsAnimated,
   onBuy,
 }: {
   product: StoreProduct;
   processing: boolean;
   disabled: boolean;
+  iconsAnimated?: boolean;
   onBuy: () => void;
 }) {
-  const featured = product.badge === "Best Value";
-  const badgeClass =
-    product.badge === "Popular"
-      ? "is-popular"
-      : product.badge === "Best Value"
-        ? "is-best"
-        : product.badge === "Bonus"
-          ? "is-bonus"
-          : "";
-  const bonus =
-    typeof product.bonusDiamonds === "number" && product.bonusDiamonds > 0
-      ? product.bonusDiamonds
-      : null;
-
+  const isAd = product.kind === "rewarded-ad";
   return (
-    <article
-      className={["get-diamonds-package", featured ? "is-featured" : ""].join(
-        " ",
-      )}
-    >
-      {product.badge ? (
-        <span className={["get-diamonds-package__badge", badgeClass].join(" ")}>
-          {product.badge}
-        </span>
-      ) : null}
-      <span className="get-diamonds-package__icon">
-        {processing ? (
-          <Loader2
-            className="size-6 animate-spin text-sky-200"
-            aria-hidden="true"
-          />
-        ) : (
-          <DiamondLottie size={40} aria-hidden />
-        )}
-      </span>
-      <p className="get-diamonds-package__amount">
-        {product.diamonds.toLocaleString()}
-      </p>
-      <p className="get-diamonds-package__label">Diamonds</p>
-      {bonus != null ? (
-        <p className="get-diamonds-package__bonus">
-          +{bonus.toLocaleString()} Bonus
-        </p>
-      ) : null}
-      <p className="get-diamonds-package__price">{product.priceLabel}</p>
-      {featured ? (
-        <div className="get-diamonds-package__buy">
-          <CtaButton
-            {...STORE_SQUIRCLE_CTA}
-            fillParent
-            type="button"
-            label={processing ? "Processing…" : "Buy"}
-            costAmount={null}
-            cornerRadius={999}
-            strokeWidth={1}
-            disabled={disabled}
-            aria-busy={processing}
-            aria-label={`Buy ${product.diamonds} Diamonds`}
-            onClick={onBuy}
-          />
-        </div>
-      ) : (
-        <button
-          type="button"
-          className="get-diamonds-package__buy get-diamonds-package__buy--outline"
-          disabled={disabled}
-          aria-busy={processing}
-          aria-label={`Buy ${product.diamonds} Diamonds`}
-          onClick={onBuy}
-        >
-          {processing ? "Processing…" : "Buy"}
-        </button>
-      )}
-    </article>
+    <CurrencyPackCard
+      currency="diamonds"
+      amount={product.diamonds}
+      kicker={isAd ? "Watch Ad" : undefined}
+      priceLabel={isAd ? "Watch Ad" : product.priceLabel}
+      badge={product.badge}
+      featured={product.badge === "Best Value"}
+      processing={processing}
+      disabled={disabled}
+      iconsAnimated={iconsAnimated}
+      onBuy={onBuy}
+    />
   );
 }
 
-function WatchAdPanel({
-  product,
-  processing,
-  disabled,
-  onWatch,
-}: {
-  product: StoreProduct;
-  processing: boolean;
-  disabled: boolean;
-  onWatch: () => void;
-}) {
-  return (
-    <div className="get-diamonds-watch-ad">
-      <div className="get-diamonds-watch-ad__body">
-        <span className="get-diamonds-watch-ad__play" aria-hidden="true">
-          <Play className="size-5" fill="currentColor" />
-        </span>
-        <h3 className="get-diamonds-watch-ad__title">Watch Ad</h3>
-        <p className="get-diamonds-watch-ad__copy">
-          Earn free Diamonds by watching short ads.
-        </p>
-        <p className="get-diamonds-watch-ad__reward">
-          +{product.diamonds}
-          <DiamondLottie size={28} aria-hidden />
-        </p>
-      </div>
-      <div className="get-diamonds-watch-ad__cta">
-        <CtaButton
-          {...STORE_SQUIRCLE_CTA}
-          fillParent
-          type="button"
-          label={processing ? "Loading ad…" : "▶ Watch Ad"}
-          costAmount={null}
-          cornerRadius={999}
-          disabled={disabled}
-          aria-busy={processing}
-          aria-label={`Watch an ad for ${product.diamonds} Diamonds`}
-          onClick={onWatch}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ExchangePanel({
-  coinBalance,
-  exchangingId,
-  disabled,
-  onExchange,
-}: {
-  coinBalance: number;
-  exchangingId?: string | null;
-  disabled: boolean;
-  onExchange: (diamonds: number, coins: number) => boolean | Promise<boolean>;
-}) {
-  async function handleExchange(diamonds: number, coins: number) {
-    if (coinBalance < coins) return;
-    await onExchange(diamonds, coins);
-  }
-
-  return (
-    <div className="get-diamonds-exchange">
-      <div className="get-diamonds-exchange__head">
-        <div>
-          <h3 className="get-diamonds-section__title">
-            <CoinLottie size={40} aria-hidden />
-            Exchange Coins for Diamonds
-          </h3>
-        </div>
-        <div className="get-diamonds-exchange__balance">
-          Your Balance
-          <div className="get-diamonds-exchange__balance-value">
-            <CoinLottie size={28} aria-hidden />
-            {coinBalance.toLocaleString()}
-          </div>
-        </div>
-      </div>
-      <div className="get-diamonds-exchange__grid">
-        {COIN_EXCHANGE_OPTIONS.map((option) => {
-          const canAfford = coinBalance >= option.coins;
-          const busy = exchangingId === option.id;
-          const missing = Math.max(option.coins - coinBalance, 0);
-          const ariaLabel = canAfford
-            ? `Exchange ${option.coins} Coins for ${option.diamonds} Diamonds`
-            : `Requires ${option.coins} Coins for ${option.diamonds} Diamonds. Need ${missing} more Coins.`;
-          return (
-            <div
-              key={option.id}
-              className={[
-                "get-diamonds-exchange-card",
-                canAfford ? "is-affordable" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              <div className="get-diamonds-exchange-card__reward">
-                <DiamondLottie size={26} aria-hidden />
-                <span className="get-diamonds-exchange-card__amount">
-                  {option.diamonds.toLocaleString()}
-                </span>
-                <span className="get-diamonds-exchange-card__unit">
-                  Diamonds
-                </span>
-              </div>
-              <div
-                className={[
-                  "get-diamonds-exchange-card__btn",
-                  canAfford ? "is-active" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <CtaButton
-                  {...STORE_SQUIRCLE_CTA}
-                  fillParent
-                  type="button"
-                  label={
-                    busy ? "Exchanging…" : option.coins.toLocaleString()
-                  }
-                  costAmount={null}
-                  leadingIcon={
-                    busy ? undefined : <CoinLottie size={22} aria-hidden />
-                  }
-                  cornerRadius={999}
-                  disabled={disabled || !canAfford || busy}
-                  aria-label={ariaLabel}
-                  onClick={() => handleExchange(option.diamonds, option.coins)}
-                />
-              </div>
-              <p
-                className="get-diamonds-exchange-card__need"
-                aria-hidden={canAfford || missing <= 0}
-              >
-                {!canAfford && missing > 0
-                  ? `Need ${missing.toLocaleString()} more`
-                  : "\u00a0"}
-              </p>
-            </div>
-          );
-        })}
-      </div>
-      <p className="get-diamonds-exchange__hint">
-        <Info className="size-3.5 shrink-0" aria-hidden="true" />
-        Coins can be earned from gameplay, daily rewards, and events.
-      </p>
-    </div>
-  );
-}

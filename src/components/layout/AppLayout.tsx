@@ -226,6 +226,7 @@ export function AppLayout() {
     location.pathname.startsWith("/game-ui") ||
     location.pathname.startsWith("/photo-scratch") ||
     location.pathname.startsWith("/audio-test") ||
+    location.pathname.startsWith("/card-open-test") ||
     location.pathname === "/nowin";
 
   const onPackPocket =

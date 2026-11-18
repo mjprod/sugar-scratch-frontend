@@ -12,7 +12,7 @@ const EMPTY_PACK_ART = "/images/packs/imageEmptyPack";
 
 function EmptyPackArt() {
   return (
-    <picture>
+    <picture className="block w-full">
       <source
         type="image/jxl"
         srcSet={`${EMPTY_PACK_ART}@1x.jxl 1x, ${EMPTY_PACK_ART}@2x.jxl 2x`}
@@ -22,12 +22,12 @@ function EmptyPackArt() {
         srcSet={`${EMPTY_PACK_ART}@1x.webp 1x, ${EMPTY_PACK_ART}@2x.webp 2x`}
       />
       <img
-        className="cart-empty-pack-art"
+        className="cart-empty-pack-art mx-auto block h-auto w-1/2"
         src={`${EMPTY_PACK_ART}@1x.png`}
         srcSet={`${EMPTY_PACK_ART}@1x.png 1x, ${EMPTY_PACK_ART}@2x.png 2x`}
         alt=""
-        width={355}
-        height={532}
+        width={178}
+        height={266}
         decoding="async"
         draggable={false}
       />
@@ -43,7 +43,7 @@ export function RouteLoadError() {
       className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-8 py-16 text-center"
     >
       <EmptyPackArt />
-      <p className="text-body text-white/75">
+      <p className="text-body max-w-[30ch] text-white/75">
         This page didn&apos;t load. Check your connection and try again.
       </p>
       <button

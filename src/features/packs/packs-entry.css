@@ -379,11 +379,11 @@ p {
 }
 
 .coverflow-nav-chevron.is-left {
-  left: 0.75rem;
+  left: 4px;
 }
 
 .coverflow-nav-chevron.is-right {
-  right: 0.75rem;
+  right: 4px;
 }
 
 .coverflow-nav-chevron:hover:not(:disabled) {
@@ -1015,7 +1015,8 @@ p {
   }
 }
 
-.coverflow-buy-pack-cta.is-confirming .cta-button {
+.coverflow-buy-pack-cta.is-confirming .cta-button,
+.coverflow-buy-pack-cta.is-confirming .mcp-photo-play-cta-css {
   pointer-events: none;
 }
 
@@ -1100,6 +1101,8 @@ p {
 }
 
 .coverflow-cart-remove-confirm {
+  /* Black glass — same recipe as .buy-pack-qty-modal__panel. */
+  --coverflow-confirm-fill: oklch(0.17 0.018 300 / 0.96);
   position: absolute;
   top: calc(100% + 0.55rem);
   left: 50%;
@@ -1107,19 +1110,17 @@ p {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.55rem;
-  min-width: 7.5rem;
-  padding: 0.7rem 0.8rem 0.75rem;
-  border: 1px solid oklch(1 0 0 / 0.1);
-  border-radius: 1.15rem;
-  background: linear-gradient(
-    180deg,
-    oklch(0.2 0 0 / 0.92) 0%,
-    oklch(0.12 0 0 / 0.94) 100%
-  );
+  gap: var(--space-3);
+  min-width: 10.5rem;
+  padding: var(--space-3) var(--space-4) var(--space-3);
+  border: 1px solid oklch(1 0 0 / 0.18);
+  border-radius: 1.35rem;
+  background: var(--coverflow-confirm-fill);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
   box-shadow:
-    inset 0 1px 0 oklch(1 0 0 / 0.1),
-    0 12px 28px oklch(0 0 0 / 0.42);
+    inset 0 1px 0 oklch(1 0 0 / 0.14),
+    0 12px 28px oklch(0 0 0 / 0.55);
   color: oklch(1 0 0 / 0.92);
   transform: translateX(-50%);
   transform-origin: top center;
@@ -1163,7 +1164,7 @@ p {
   height: 10px;
   border-top: 1px solid oklch(1 0 0 / 0.1);
   border-left: 1px solid oklch(1 0 0 / 0.1);
-  background: oklch(0.19 0 0 / 0.94);
+  background: var(--coverflow-confirm-fill, oklch(0.17 0.018 300 / 0.96));
   transform: translateX(-50%) rotate(45deg);
 }
 
@@ -1192,7 +1193,7 @@ p {
 .coverflow-cart-remove-confirm__label {
   margin: 0;
   color: oklch(1 0 0 / 0.78);
-  font-size: 0.78rem;
+  font-size: var(--text-body);
   font-weight: 650;
   letter-spacing: 0.08em;
   line-height: 1;
@@ -1202,14 +1203,14 @@ p {
 .coverflow-cart-remove-confirm__actions {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: var(--space-3);
 }
 
 .coverflow-cart-remove-confirm__btn {
   display: grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 3.35rem;
+  height: 3.35rem;
   margin: 0;
   padding: 0;
   border: 1px solid oklch(1 0 0 / 0.12);
@@ -1225,8 +1226,8 @@ p {
 }
 
 .coverflow-cart-remove-confirm__btn svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex-shrink: 0;
 }
 
@@ -1254,7 +1255,7 @@ p {
 
 @media (min-width: 821px) {
   .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm {
-    min-width: 10.5rem;
+    min-width: 14.5rem;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4) var(--space-4);
   }
@@ -1266,7 +1267,7 @@ p {
   }
 
   .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__label {
-    font-size: var(--text-body);
+    font-size: var(--text-title);
   }
 
   .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__actions {
@@ -1274,13 +1275,13 @@ p {
   }
 
   .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__btn {
-    width: 3rem;
-    height: 3rem;
+    width: 4.3rem;
+    height: 4.3rem;
   }
 
   .coverflow-cart-remove-wrap .coverflow-cart-remove-confirm__btn svg {
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.9rem;
+    height: 1.9rem;
   }
 }
 

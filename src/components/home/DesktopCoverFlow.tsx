@@ -44,6 +44,19 @@ export type HomeCoverFlowViewProps = {
     quantity?: number,
     options?: { allowDuplicates?: boolean },
   ) => void;
+  /** Profile / theme: View Now or Play on the slide instead of Buy Pack. */
+  slideCta?: "buy" | "view" | "play";
+  onView?: (item: Iteration) => void;
+  /** Profile: flat slide carousel (no coverflow 3D) so glass blur can see the page. */
+  flat?: boolean;
+  /** Profile: charcoal / stage art base path (no extension) rendered once inside the slider. */
+  stageBackdropBase?: string;
+  /** Profile: API charcoal bust URL (1x). Prefer over stageBackdropBase when set. */
+  stageBackdropSrc?: string;
+  /** Profile: API charcoal bust URL (2x). */
+  stageBackdropSrc2x?: string;
+  /** Label under the charcoal bust (influencer display name). */
+  stageBackdropLabel?: string;
 };
 
 function backdropUrlForItem(item: Iteration | null | undefined) {

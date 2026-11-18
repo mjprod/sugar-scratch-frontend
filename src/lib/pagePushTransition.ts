@@ -37,7 +37,12 @@ export function isPurchaseFlowPath(pathname: string): boolean {
 
 /** True when this pathname must not sit under a transformed push ancestor. */
 export function shouldSkipPushTransition(pathname: string): boolean {
-  return isScratchGamePath(pathname) || isPurchaseFlowPath(pathname);
+  const path = pushPathname(pathname);
+  return (
+    isScratchGamePath(path) ||
+    isPurchaseFlowPath(path) ||
+    path === "/card-open-test"
+  );
 }
 
 /**
@@ -73,6 +78,24 @@ export function isCreatorBackHop(fromPath: string, toPath: string): boolean {
 }
 
 /**
+ * Creator theme/packs/motion → parent creator profile is a pop even when
+ * `navigate(Paths.creator(id))` grows history idx instead of history.back().
+ * Packs → theme (Buy Packs? return) is the same: a sibling pop, not a push.
+ */
+export function isCreatorSubpageBackHop(fromPath: string, toPath: string): boolean {
+  const from = pushPathname(fromPath);
+  const to = pushPathname(toPath);
+  if (!from.startsWith("/creator/") || !to.startsWith("/creator/")) return false;
+  if (from.startsWith(`${to}/`)) return true;
+
+  // /creator/:id/packs → /creator/:id/theme/:themeId
+  const fromParts = from.split("/");
+  const toParts = to.split("/");
+  if (fromParts[2] !== toParts[2]) return false;
+  return fromParts[3] === "packs" && toParts[3] === "theme";
+}
+
+/**
  * Settings hub is `/settings`; subpages live under `/profile/*`.
  * Leaving a subpage for the hub is a pop even if history idx increases
  * (e.g. navigate(Paths.profile) instead of history.back).
@@ -96,6 +119,7 @@ export function pagePushDirection(
   nextIdx: number,
 ): 1 | -1 {
   if (isCreatorBackHop(fromPath, toPath)) return -1;
+  if (isCreatorSubpageBackHop(fromPath, toPath)) return -1;
   if (isSettingsBackHop(fromPath, toPath)) return -1;
   return pushDirection(prevIdx, nextIdx);
 }

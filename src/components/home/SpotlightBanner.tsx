@@ -2,9 +2,20 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { apiMutate } from "@/lib/api";
+import { useMotionOptional } from "@/features/collection/hooks/useMotion";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 const EFFECT_STOP = 0.55;
 const BG_EFFECT_STOP = 0.65;
+/** Scene parallax device tilt (yaw → X, pitch → Y). Women move less than bg. */
+const BG_TILT_MAX_X_PX = 36;
+const BG_TILT_MAX_Y_PX = 40;
+const BG_TILT_GAMMA_RANGE = 28;
+const BG_TILT_BETA_RANGE = 24;
+const BG_TILT_LERP = 0.05;
+const WOMEN_TILT_FACTOR = 0.55;
 
 const OFFSETS = {
   bg: { start: -133, end: 22 },
@@ -75,6 +86,23 @@ export function SpotlightBanner({
   const blurRef = useRef<HTMLImageElement>(null);
   const dimRef = useRef<HTMLDivElement>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
+  const [cssCta, setCssCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+  const motion = useMotionOptional();
+  const bgTiltOn = Boolean(
+    motion?.enabled && motion.permission === "granted",
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -92,9 +120,28 @@ export function SpotlightBanner({
     let raf = 0;
     let visible = true;
     let lastKey = "";
+    let scrollBgY = 0;
+    let scrollBgScale = 1;
+    let scrollWomenY = 0;
+    let scrollWomenScale = 1;
+    let tiltX = 0;
+    let tiltY = 0;
+
+    const paintSceneTilt = () => {
+      bg.style.transform = `translate3d(${tiltX.toFixed(2)}px, ${(scrollBgY + tiltY).toFixed(2)}px, 0) scale(${scrollBgScale})`;
+      const wX = tiltX * WOMEN_TILT_FACTOR;
+      const wY = tiltY * WOMEN_TILT_FACTOR;
+      women.style.transform = `translate3d(${wX.toFixed(2)}px, ${(scrollWomenY + wY).toFixed(2)}px, 0) scale(${scrollWomenScale})`;
+    };
 
     const clearMotion = () => {
       lastKey = "";
+      tiltX = 0;
+      tiltY = 0;
+      scrollBgY = 0;
+      scrollBgScale = 1;
+      scrollWomenY = 0;
+      scrollWomenScale = 1;
       bg.style.transform = "";
       women.style.transform = "";
       logo.style.transform = "";
@@ -124,15 +171,14 @@ export function SpotlightBanner({
       lastKey = key;
 
       const offsets = mobile.matches ? MOBILE_OFFSETS : OFFSETS;
-      const bgY = lerp(offsets.bg.start, offsets.bg.end, bgEffectT);
-      const womenY = lerp(offsets.women.start, offsets.women.end, effectT);
+      scrollBgY = lerp(offsets.bg.start, offsets.bg.end, bgEffectT);
+      scrollWomenY = lerp(offsets.women.start, offsets.women.end, effectT);
       const logoY = lerp(offsets.logo.start, offsets.logo.end, effectT);
-      const womenScale = mobile.matches ? 1.03 : 1.25;
-      const bgScale = mobile.matches ? 3.5 : 1.42;
+      scrollWomenScale = mobile.matches ? 1.03 : 1.25;
+      scrollBgScale = mobile.matches ? 3.5 : 1.42;
       const logoScale = lerp(0.7, 0.75, effectT);
 
-      bg.style.transform = `translate3d(0, ${bgY}px, 0) scale(${bgScale})`;
-      women.style.transform = `translate3d(0, ${womenY.toFixed(2)}px, 0) scale(${womenScale})`;
+      paintSceneTilt();
       logo.style.transform = `translate3d(0, ${logoY.toFixed(2)}px, 0)`;
       brand.style.transform = `scale(${logoScale.toFixed(3)})`;
       women.style.opacity = lerp(0.7, 1, effectT).toFixed(3);
@@ -160,7 +206,34 @@ export function SpotlightBanner({
     mobile.addEventListener("change", queue);
     paint();
 
+    let unsubTilt: (() => void) | undefined;
+    if (bgTiltOn && motion && !reduce.matches) {
+      unsubTilt = motion.subscribe((sample) => {
+        if (!sample.hasSample || !visible) return;
+        const yawNorm = clamp(sample.gamma / BG_TILT_GAMMA_RANGE, -1, 1);
+        // Invert so phone-left shifts the scene right (parallax).
+        const targetX = -yawNorm * BG_TILT_MAX_X_PX;
+        tiltX += (targetX - tiltX) * BG_TILT_LERP;
+
+        const beta =
+          typeof sample.beta === "number" && !Number.isNaN(sample.beta)
+            ? sample.beta
+            : 55;
+        const pitchNorm = clamp((beta - 55) / BG_TILT_BETA_RANGE, -1, 1);
+        // Invert so tipping the phone toward you shifts the scene down.
+        const targetY = -pitchNorm * BG_TILT_MAX_Y_PX;
+        tiltY += (targetY - tiltY) * BG_TILT_LERP;
+
+        paintSceneTilt();
+      });
+    } else {
+      tiltX = 0;
+      tiltY = 0;
+      paintSceneTilt();
+    }
+
     return () => {
+      unsubTilt?.();
       io.disconnect();
       target.removeEventListener("scroll", queue);
       window.removeEventListener("resize", queue);
@@ -168,7 +241,7 @@ export function SpotlightBanner({
       mobile.removeEventListener("change", queue);
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [bgTiltOn, motion]);
 
   return (
     <section
@@ -219,15 +292,36 @@ export function SpotlightBanner({
             decoding="async"
           />
         </div>
-        <div className="hub-spotlight-band-cta">
-          <CtaButton
-            {...ctaButtonPropsFromTemplate("squircleCTA")}
-            fillParent
-            label="Tell Us Who"
-            costAmount={null}
-            auroraFrozen={auroraPaused}
-            onClick={() => setSuggestOpen(true)}
-          />
+        <div
+          className={[
+            "hub-spotlight-band-cta",
+            cssCta ? "is-css" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+        >
+          {cssCta ? (
+            <div className="mcp-photo-play-cta-css-wrap">
+              <button
+                type="button"
+                className="mcp-photo-play-cta-css mcp-photo-play-cta-css--spotlight"
+                onClick={() => setSuggestOpen(true)}
+              >
+                <span className="mcp-photo-play-cta-css__label">
+                  Tell Us Who
+                </span>
+              </button>
+            </div>
+          ) : (
+            <CtaButton
+              {...ctaButtonPropsFromTemplate("squircleCTA")}
+              fillParent
+              label="Tell Us Who"
+              costAmount={null}
+              auroraFrozen={auroraPaused}
+              onClick={() => setSuggestOpen(true)}
+            />
+          )}
         </div>
       </div>
 

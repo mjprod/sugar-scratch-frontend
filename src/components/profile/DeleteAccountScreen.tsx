@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { SubpageHeader } from "@/components/SubpageHeader";
+import { CtaButton } from "@/components/cta";
 import {
   DELETE_ACCOUNT_CONFIRM,
   DELETE_ACCOUNT_POINTS,
@@ -83,9 +84,19 @@ export function DeleteAccountScreen() {
             {error}
           </p>
         ) : null}
-        <button className="help-danger" type="submit" disabled={!ready}>
-          {submitting ? "Deleting…" : "Delete account"}
-        </button>
+        <div className="help-danger-cta">
+          <CtaButton
+            forceCss
+            cssTone="red"
+            fillParent
+            type="submit"
+            label={submitting ? "Deleting…" : "Delete account"}
+            costAmount={null}
+            strokeWidth={1}
+            cornerRadius={16}
+            disabled={!ready}
+          />
+        </div>
       </form>
     </AppPageShell>
   );

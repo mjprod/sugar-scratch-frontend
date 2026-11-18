@@ -6,7 +6,7 @@ import {
   Gift,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppPageShell } from "@/components/AppPageShell";
 import { EmptyState } from "@/components/EmptyState";
 import { SubpageHeader } from "@/components/SubpageHeader";
@@ -151,9 +151,6 @@ export function InboxScreen({
         />
       ) : emptyAll || emptyFiltered ? (
         <PageContentEnter className="inbox-empty-wrap">
-          <div className="inbox-section-head">
-            <span className="inbox-section-label">New</span>
-          </div>
           <EmptyState
             art={<InboxDoneArt />}
             title="You're all caught up"
@@ -167,35 +164,17 @@ export function InboxScreen({
         </PageContentEnter>
       ) : (
         <PageContentEnter stagger>
-          <MessageListSection
-            label="New"
-            showDot={newer.some((m) => !m.isRead)}
-          >
-            {newer.length > 0
-              ? newer.map((message) => (
-                  <MessageItem
-                    key={message.id}
-                    message={message}
-                    onPress={handleRow}
-                  />
-                ))
-              : null}
-          </MessageListSection>
-
-          {earlier.length > 0 ? (
-            <MessageListSection
-              label="Earlier"
-              showDot={earlier.some((m) => !m.isRead)}
-            >
-              {earlier.map((message) => (
+          <section className="inbox-section" aria-label="Inbox messages">
+            <ul className="inbox-list">
+              {[...newer, ...earlier].map((message) => (
                 <MessageItem
                   key={message.id}
                   message={message}
                   onPress={handleRow}
                 />
               ))}
-            </MessageListSection>
-          ) : null}
+            </ul>
+          </section>
         </PageContentEnter>
       )}
     </AppPageShell>
@@ -205,9 +184,6 @@ export function InboxScreen({
 function InboxSkeleton() {
   return (
     <div className="inbox-section" aria-busy="true" aria-label="Loading inbox">
-      <div className="inbox-section-head">
-        <span className="inbox-section-label">New</span>
-      </div>
       <ul className="inbox-list">
         {Array.from({ length: 5 }, (_, i) => (
           <li key={i} className="inbox-item-row">
@@ -246,36 +222,6 @@ function UnreadFilter({
       <Filter className="size-3.5" strokeWidth={2} aria-hidden />
       <span className="inbox-filter-label">Unread only</span>
     </button>
-  );
-}
-
-function MessageListSection({
-  label,
-  showDot,
-  trailing,
-  children,
-}: {
-  label: string;
-  showDot?: boolean;
-  trailing?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section
-      className="inbox-section"
-      aria-labelledby={`inbox-section-${label}`}
-    >
-      <div className="inbox-section-head">
-        <h2 id={`inbox-section-${label}`} className="inbox-section-label">
-          {label}
-          {showDot ? (
-            <span className="inbox-unread-dot" aria-label="Contains unread" />
-          ) : null}
-        </h2>
-        {trailing}
-      </div>
-      {children ? <ul className="inbox-list">{children}</ul> : null}
-    </section>
   );
 }
 

@@ -70,6 +70,10 @@ export type BackendModel = {
   ultraCardTrailerPosterUrl?: string | null
   /** Landscape model cover (recommended 820×312), e.g. "/models/julianaval/cover.webp". */
   coverUrl?: string | null
+  /** Profile coverflow charcoal bust (1x). */
+  profileDressUrl?: string | null
+  /** Profile coverflow charcoal bust (2x). */
+  profileDress2xUrl?: string | null
   /** theme_id → public URL for model×theme collection avatar. */
   theme_avatars?: Record<string, string> | null
   /** Freeform labels for dashboard filtering. */
@@ -512,6 +516,8 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     ultraCardTrailerUrl: model.ultraCardTrailerUrl ?? null,
     ultraCardTrailerPosterUrl: model.ultraCardTrailerPosterUrl ?? null,
     coverUrl: model.coverUrl ?? null,
+    profileDressUrl: model.profileDressUrl ?? null,
+    profileDress2xUrl: model.profileDress2xUrl ?? null,
     theme_avatars: model.theme_avatars,
     tags: model.tags,
   }

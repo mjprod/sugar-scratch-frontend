@@ -22,6 +22,14 @@ export const Paths = {
   browse: "/",
   creator: (id: string) => `/creator/${id}`,
   creatorPattern: "/creator/:id",
+  /** Buy packs for one influencer (coverflow filtered to that creator). */
+  creatorPacks: (id: string) =>
+    `/creator/${encodeURIComponent(id)}/packs`,
+  creatorPacksPattern: "/creator/:id/packs",
+  /** Theme detail: motion coverflow + photo scratch grid. */
+  creatorTheme: (creatorId: string, themeId: string) =>
+    `/creator/${encodeURIComponent(creatorId)}/theme/${encodeURIComponent(themeId)}`,
+  creatorThemePattern: "/creator/:id/theme/:themeId",
   /** Unlocked motion card detail (Figma 93:590 Keep Playing). */
   motionCard: (creatorId: string, cardId: string) =>
     `/creator/${encodeURIComponent(creatorId)}/motion/${encodeURIComponent(cardId)}`,
@@ -72,6 +80,8 @@ export const Paths = {
   componentLab: "/component-lab",
   /** Scratch card that replays from the intro, for mixing sound levels. */
   audioTest: "/audio-test",
+  /** Isolated Three.js pack tear, for tuning the card-open animation. */
+  cardOpenTest: "/card-open-test",
   photoScratch: "/photo-scratch",
   /** Motion scratch — same query HoloCard uses by default. */
   gamePlay: (
@@ -90,7 +100,12 @@ export const Paths = {
   /** Static photo scratch from collection PHOTO CARDS (no game=1 → exit to collection / motion page). */
   photoScratchPlay: (
     photoCardId: string,
-    extra?: { modelId?: string; creatorId?: string; freePlay?: boolean },
+    extra?: {
+      modelId?: string;
+      creatorId?: string;
+      themeId?: string;
+      freePlay?: boolean;
+    },
   ) => {
     const params = new URLSearchParams();
     params.set("card", photoCardId);
@@ -98,6 +113,8 @@ export const Paths = {
     if (model) params.set("model", model);
     const creator = extra?.creatorId?.trim();
     if (creator) params.set("creator", creator);
+    const theme = extra?.themeId?.trim();
+    if (theme) params.set("theme", theme);
     if (extra?.freePlay) params.set("freeplay", "1");
     return `/photo-scratch?${params.toString()}`;
   },

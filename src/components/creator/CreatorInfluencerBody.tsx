@@ -658,25 +658,33 @@ function ThemeCollectionCard({
           // duplicateCount: demo fixture only — real copy count once the board sends one
           duplicateCount: demoLockedBanner && unlocked && index === 0 ? 3 : undefined,
           playCost: boardCard?.price ?? packUnitCost(),
-          freePlay: freePlay && (demoLockedBanner || Boolean(boardCard?.freePlayable)),
+          freePlay:
+            freePlay &&
+            (demoLockedBanner || Boolean(boardCard?.freePlayable)),
           staticTotal: boardCard?.staticCardsTotal || 10,
           collectedIndexes,
           photos: photos.map((photo) => ({
             ...photo,
             freePlay:
-              freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
+              freePlay &&
+              (demoLockedBanner || Boolean(photo.freePlayable)),
             onPlay: () =>
               onPlayPhoto(
                 card.id,
                 photo.slotIndex ?? 0,
                 card.modelId ?? "",
-                freePlay && (demoLockedBanner || Boolean(photo.freePlayable)),
+                freePlay &&
+                  (demoLockedBanner || Boolean(photo.freePlayable)),
                 photo.id,
               ),
           })),
           onPlay: () => {
             if (card.modelId) {
-              if (freePlay && onPlayGameFree) {
+              if (
+                freePlay &&
+                (demoLockedBanner || Boolean(boardCard?.freePlayable)) &&
+                onPlayGameFree
+              ) {
                 onPlayGameFree(card.modelId, card.id, card.name);
                 return;
               }
@@ -779,24 +787,27 @@ function ThemeCollectionCard({
           </h2>
         </div>
         {freePlayAllowed ? (
-          <label className="cpv2-free-play">
+          <button
+            type="button"
+            className={freePlay ? "cpv2-free-play is-on" : "cpv2-free-play"}
+            role="switch"
+            aria-checked={freePlay}
+            aria-label={`Free play for ${theme.name}`}
+            onClick={() => setFreePlay((on) => !on)}
+          >
             <span className="cpv2-free-play-clip" aria-hidden="true">
               <span className={freePlay ? "cpv2-free-play-track is-on" : "cpv2-free-play-track"}>
                 <span className="cpv2-free-play-label">Free Play?</span>
                 <span className="cpv2-free-play-label">Free: <span className="cpv2-free-play-on">ON</span></span>
               </span>
             </span>
-            <button
-              type="button"
+            <span
               className={freePlay ? "cpv2-free-play-switch is-on" : "cpv2-free-play-switch"}
-              role="switch"
-              aria-checked={freePlay}
-              aria-label={`Free play for ${theme.name}`}
-              onClick={() => setFreePlay((on) => !on)}
+              aria-hidden="true"
             >
               <span className="cpv2-free-play-knob" />
-            </button>
-          </label>
+            </span>
+          </button>
         ) : null}
       </header>
 

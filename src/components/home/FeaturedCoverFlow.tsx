@@ -32,6 +32,7 @@ import { type FeaturedPack } from "@/services/homepage";
 import { resolveCollectionThemeLabel } from "@/services/collection";
 import { isPackInCart, subscribeCart } from "@/services/cart";
 import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
+import { notifyNotEnoughDiamonds } from "@/components/ui/PackAddedToast";
 import {
   loadModels,
   matchModel,
@@ -323,6 +324,9 @@ export function FeaturedCoverFlow({
   influencerBackdrop = false,
   showStatusPager = false,
   creatorId = null,
+  slideCta = "buy",
+  onView,
+  forceDesktopCoverflow = false,
 }: {
   featured: FeaturedPack[];
   /** Existing Pack Pocket add flow (auth-gated by the parent). */
@@ -334,6 +338,12 @@ export function FeaturedCoverFlow({
   showStatusPager?: boolean;
   /** When set, only packs for this creator are shown. */
   creatorId?: string | null;
+  /** Profile / theme: View Now or Play on slides; Buy Pack lives as a page CTA. */
+  slideCta?: "buy" | "view" | "play";
+  /** Second arg is the pack theme label when known (for theme-page routing). */
+  onView?: (item: Iteration, themeName?: string) => void;
+  /** Always mount Three.js coverflow, even on phone (creator packs page). */
+  forceDesktopCoverflow?: boolean;
 }) {
   const { authed } = useAuthSession();
   const {
@@ -453,7 +463,14 @@ export function FeaturedCoverFlow({
     // Mobile uses the Swiper CSS carousel; it reports ready itself.
     // Also bail on the raw media query: a stale false isMobileViewport must
     // not attach a decoder before the CSS carousel takes over.
-    if (!catalog || isMobileViewport || readMobileCoverflowViewport()) return;
+    // forceDesktopCoverflow (creator packs) still needs the WebGL preload path.
+    if (
+      !catalog ||
+      (!forceDesktopCoverflow &&
+        (isMobileViewport || readMobileCoverflowViewport()))
+    ) {
+      return;
+    }
     const first = catalog.items[0];
     if (!first?.videoUrl) {
       onReadyRef.current?.();
@@ -476,7 +493,7 @@ export function FeaturedCoverFlow({
       unsubscribe();
       release();
     };
-  }, [catalog, isMobileViewport]);
+  }, [catalog, isMobileViewport, forceDesktopCoverflow]);
 
   const cameraSettings = useMemo<CoverFlowCameraSettings>(() => {
     const base = isMobileViewport
@@ -639,8 +656,7 @@ export function FeaturedCoverFlow({
 
         if (cost > diamonds) {
           holdUnpaidPack(item, target, qty);
-          setNavNotice("Not enough diamonds. Pack saved to My Packs.");
-          window.setTimeout(() => setNavNotice(""), 3200);
+          notifyNotEnoughDiamonds();
           openStore();
           return;
         }
@@ -761,17 +777,13 @@ export function FeaturedCoverFlow({
           "open-pack",
         );
       } catch (error) {
-        const message =
-          error instanceof PurchaseError
-            ? error.kind === "insufficient"
-              ? "Not enough diamonds to buy this pack."
-              : "Purchase failed. Try again."
-            : "Purchase failed. Try again.";
-        setNavNotice(message);
-        window.setTimeout(() => setNavNotice(""), 3200);
         if (error instanceof PurchaseError && error.kind === "insufficient") {
+          notifyNotEnoughDiamonds();
           holdUnpaidPack(item, target, qty);
           openStore();
+        } else {
+          setNavNotice("Purchase failed. Try again.");
+          window.setTimeout(() => setNavNotice(""), 3200);
         }
       } finally {
         buyingRef.current = false;
@@ -825,7 +837,10 @@ export function FeaturedCoverFlow({
   // Phone must not mount the WebGL hero for even one frame. isMobileViewport
   // starts false before the media-query effect, and that frame is the iOS
   // webglcontextlost (three pack-face decoders + the coverflow context).
-  const phoneHero = isMobileViewport || readMobileCoverflowViewport();
+  // Creator packs sets forceDesktopCoverflow so Three.js runs on mobile too.
+  const phoneHero =
+    !forceDesktopCoverflow &&
+    (isMobileViewport || readMobileCoverflowViewport());
 
   const statusPager =
     showStatusPager && items.length > 1 ? (
@@ -851,6 +866,7 @@ export function FeaturedCoverFlow({
           buying={buying}
           addedToPocket={addedToPocket}
           influencerBackdrop={influencerBackdrop}
+          slideCta={slideCta}
           onSelect={setSelectedId}
           onDeselect={() => setSelectedId(null)}
           onFocusChange={(item) => {
@@ -865,6 +881,14 @@ export function FeaturedCoverFlow({
           onAddToPocket={(item) => {
             handleAddToPocket(item);
           }}
+          onView={
+            onView
+              ? (item) => {
+                  const target = catalog?.playById.get(item.id);
+                  onView(item, target?.themeName);
+                }
+              : undefined
+          }
           onReady={() => onReadyRef.current?.()}
         />
         {statusPager}

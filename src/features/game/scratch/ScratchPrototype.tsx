@@ -43,6 +43,7 @@ import {
   type ParticleType,
 } from "../cursorFx/FairyDustCursor";
 import { loadLottieUrlSource } from "../cursorFx/loadLottieSource";
+import { AutoScratchHudIcon } from "../AutoScratchHudIcon";
 import { GamePauseButton } from "../GamePauseButton";
 import {
   shouldUpdateBodyMarkers,
@@ -252,7 +253,6 @@ import { THEME_INTROS_ENABLED, fetchThemes } from "../shared/themes";
 import { StageCoinCount } from "../StageCoinCount";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { formatBalance } from "@/lib/formatBalance";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
 import {
   MirrorSlideTransition,
   nextTemplateId,
@@ -1447,7 +1447,7 @@ export function ScratchPrototype({
   onFinish?: () => void;
 } = {}) {
   const { authed } = useAuth();
-  const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
+  const { addCoins, addDiamonds, spendCoins, spendDiamonds, diamonds } =
     useWallet();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -5077,7 +5077,7 @@ export function ScratchPrototype({
 
   function applyScratchZoom(point: Vec2) {
     const settings = scratchZoomRef.current;
-    if (!settings.enabled || !getScratchZoomEnabled()) return;
+    if (!settings.enabled || !getScratchZoomEnabled("motion")) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -6235,7 +6235,9 @@ export function ScratchPrototype({
           >
             <div className="stage-game__top-chrome-row is-controls">
               <div className="stage-game__top-chrome-side is-start">
-                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+                {onLeave ? (
+                  <GamePauseButton onLeave={onLeave} zoomMode="motion" />
+                ) : null}
               </div>
               <div className="stage-game__top-chrome-center">
                 {iconRevealerShown &&
@@ -6318,16 +6320,33 @@ export function ScratchPrototype({
                 ) : null}
               </div>
               <div className="stage-game__top-chrome-side is-end">
-                {topBarPhase === "docked" ? (
-                  <div className="stage-game__diamond-enter">
-                    <CurrencyBalances
-                      coins={coins}
-                      diamonds={diamonds}
-                      compact
-                      diamondsOnly
-                    />
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  className={[
+                    "stage-game__auto-scratch-a",
+                    topBarPhase !== "docked" ? "is-waiting" : "",
+                    autoScratch.enabled ? "is-active" : "",
+                    symbolsHuntComplete ? "is-symbols-complete" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  disabled={autoScratchLocked || topBarPhase !== "docked"}
+                  aria-label={
+                    topBarPhase !== "docked"
+                      ? "Auto scratch unlocks when the symbol dock reaches the top"
+                      : autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                  }
+                  aria-pressed={autoScratch.enabled}
+                  onClick={() =>
+                    updateAutoScratch({ enabled: !autoScratch.enabled })
+                  }
+                >
+                  <AutoScratchHudIcon />
+                </button>
               </div>
             </div>
             {/* Status row: [ auto + cards-left | notifications ] */}
@@ -6408,6 +6427,7 @@ export function ScratchPrototype({
                 coarsePointer: CURSOR_FX_DEVICE.coarsePointer,
               })}
               onDockHiddenChange={setDockHidden}
+              zoomMode="motion"
               holdAfterPointerMs={
                 scratchZoom.enabled ? scratchZoom.zoomOutMs : 0
               }

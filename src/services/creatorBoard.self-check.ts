@@ -2,7 +2,12 @@
  * Creator board parser — drop malformed cards, keep null socials null.
  * Run: npx tsx src/services/creatorBoard.self-check.ts
  */
-import { collectionProgressFromBoard, parseCreatorBoard } from "./creatorBoard.ts";
+import {
+  collectionProgressFromBoard,
+  parseCreatorBoard,
+  themeCollectionProgressFromBoard,
+  unlockedMotionFreePlayIds,
+} from "./creatorBoard.ts";
 
 function assert(condition: unknown, message: string) {
   if (!condition) throw new Error(message);
@@ -72,6 +77,34 @@ assert(board?.themes[0]?.premium?.replayPrice === 4, "premium replay price kept"
 assert(board?.ultra === null, "null ultra stays null");
 assert(parseCreatorBoard({ creator: { name: "no id" } }) === null, "board without creator id rejected");
 
+const motionCards = board!.themes[0]!.motionCards;
+assert(
+  unlockedMotionFreePlayIds(motionCards, false) === null,
+  "free-play off → no owned ring ids",
+);
+assert(
+  unlockedMotionFreePlayIds(motionCards, true)?.has("motion-1") === true,
+  "free-play on + unlocked → owned ring",
+);
+assert(
+  unlockedMotionFreePlayIds(
+    [
+      ...motionCards,
+      {
+        id: "locked-2",
+        price: 0,
+        status: "locked",
+        freePlayable: true,
+        staticCardsOwned: 0,
+        staticCardsTotal: 0,
+        staticCards: [],
+      },
+    ],
+    true,
+  )?.has("locked-2") !== true,
+  "free-play on + locked → no owned ring",
+);
+
 const progress = collectionProgressFromBoard(board);
 assert(progress.staticOwned === 1, "static owned counts the owned slot");
 assert(progress.staticTotal === 8, "static total uses staticCardsTotal");
@@ -99,5 +132,12 @@ assert(
   }).pct === 100,
   "total reaches 100% only once ultra is unlocked",
 );
+
+const themeProgress = themeCollectionProgressFromBoard(board, board!.themes[0]!.id);
+assert(themeProgress.motionOwned === 1, "theme motion owned matches unlocked motions");
+assert(themeProgress.motionTotal === 1, "theme motion total is motion cards only");
+assert(themeProgress.photoOwned === 1, "theme photo owned matches static slots");
+assert(themeProgress.photoTotal === 8, "theme photo total uses staticCardsTotal");
+assert(themeProgress.owned === 2 && themeProgress.total === 9, "theme total is motion + photo");
 
 console.log("creatorBoard.self-check: ok");

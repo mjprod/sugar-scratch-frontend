@@ -14,7 +14,10 @@ import {
   setGameSoundOn,
   subscribeGameAudioPrefs,
 } from "@/services/gameAudioPrefs";
-import { getScratchZoomEnabled } from "@/services/scratchZoomPref";
+import {
+  getScratchZoomEnabled,
+  syncScratchZoomDataset,
+} from "@/services/scratchZoomPref";
 import { noteCoinsReceived } from "@/services/coinReceipt";
 import {
   claimScratchCoins,
@@ -32,11 +35,11 @@ import {
   PRESENT_ZOOM,
   type ImageLayerCameras,
 } from "./glRenderer";
+import { AutoScratchHudIcon } from "../AutoScratchHudIcon";
 import { GamePauseButton } from "../GamePauseButton";
 import { StageCoinCount } from "../StageCoinCount";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { formatBalance } from "@/lib/formatBalance";
-import { CurrencyBalances } from "@/components/CurrencyBalances";
 import { GameSymbolIcon } from "../modules/GameSymbolIcon";
 import { MatchFlight } from "../modules/MatchFlight";
 import {
@@ -849,7 +852,7 @@ function motionStatusLabel(status: string) {
 export function PhotoScratch({ onLeave }: { onLeave?: () => void } = {}) {
   const navigate = useNavigate();
   const { authed, bumpInventoryRevision } = useAuth();
-  const { addCoins, addDiamonds, spendCoins, spendDiamonds, coins, diamonds } =
+  const { addCoins, addDiamonds, spendCoins, spendDiamonds, diamonds } =
     useWallet();
   /** Server-issued scratch hand — required to persist 10% coin awards. */
   const handIdRef = useRef("");
@@ -989,6 +992,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   useMarkPageReady(ready || loadError != null);
+  useEffect(() => {
+    syncScratchZoomDataset(getScratchZoomEnabled("photo"));
+  }, []);
   useEffect(() => {
     if (!PHOTO_CURSOR_FX.fairyDust) return;
     let cancelled = false;
@@ -3127,7 +3133,7 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
   }, [autoScratch]);
 
   function applyPhotoScratchZoom(clientX: number, clientY: number, zoomIn: boolean) {
-    if (!getScratchZoomEnabled()) return;
+    if (!getScratchZoomEnabled("photo")) return;
     const stage = stageRef.current;
     const canvas = fgCanvasRef.current;
     if (!stage || !canvas) return;
@@ -3754,7 +3760,9 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
           >
             <div className="stage-game__top-chrome-row is-controls">
               <div className="stage-game__top-chrome-side is-start">
-                {onLeave ? <GamePauseButton onLeave={onLeave} /> : null}
+                {onLeave ? (
+                  <GamePauseButton onLeave={onLeave} zoomMode="photo" />
+                ) : null}
               </div>
               <div className="stage-game__top-chrome-center">
                 {selectedCardId &&
@@ -3804,16 +3812,33 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
                 ) : null}
               </div>
               <div className="stage-game__top-chrome-side is-end">
-                {topBarPhase === "docked" ? (
-                  <div className="stage-game__diamond-enter">
-                    <CurrencyBalances
-                      coins={coins}
-                      diamonds={diamonds}
-                      compact
-                      diamondsOnly
-                    />
-                  </div>
-                ) : null}
+                <button
+                  type="button"
+                  className={[
+                    "stage-game__auto-scratch-a",
+                    topBarPhase !== "docked" ? "is-waiting" : "",
+                    autoScratch.enabled ? "is-active" : "",
+                    symbolsHuntComplete ? "is-symbols-complete" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  disabled={autoScratchLocked || topBarPhase !== "docked"}
+                  aria-label={
+                    topBarPhase !== "docked"
+                      ? "Auto scratch unlocks when the symbol dock reaches the top"
+                      : autoScratchLocked
+                        ? "Auto scratch unlocks when play starts"
+                        : autoScratch.enabled
+                          ? "Auto scratch running"
+                          : "Enable auto scratch"
+                  }
+                  aria-pressed={autoScratch.enabled}
+                  onClick={() =>
+                    updateAutoScratch({ enabled: !autoScratch.enabled })
+                  }
+                >
+                  <AutoScratchHudIcon />
+                </button>
               </div>
             </div>
             <div className="stage-game__top-chrome-row is-status">
@@ -3852,7 +3877,8 @@ const setIntroVideoEl = useCallback((el: HTMLVideoElement | null) => {
               slotElsOutRef={topBarSlotElsRef}
               onAllRevealed={onTopBarAllRevealed}
               onDockHiddenChange={setDockHidden}
-              holdAfterPointerMs={getScratchZoomEnabled() ? 600 : 0}
+              zoomMode="photo"
+              holdAfterPointerMs={getScratchZoomEnabled("photo") ? 600 : 0}
             />
           ) : null}
           <ScratchFrameProgress

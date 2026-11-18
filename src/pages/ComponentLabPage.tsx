@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
+import { Play } from "lucide-react";
+import { McpPhotoPlayCta } from "@/components/creator/McpPhotoPlayCta";
+import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import {
   LockStatusBanner,
   type LockStatus,
 } from "@/components/lock-status/LockStatusBanner";
+import { DiamondLottie } from "@/components/ui/DiamondLottie";
+import "@/components/creator/motion-card-page.css";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+import "./component-lab-photo-play-cta.css";
 import {
   MOTION_CARD_THEMES,
   type MotionCardState,
@@ -34,6 +41,12 @@ import {
   type PhotoGatewayCard,
 } from "@/components/photo-gateway/PhotoGateway";
 import "@/components/pack-preview/PackPreview.css";
+import {
+  CoinPackCard,
+  DiamondPackCard,
+  type CurrencyPackCurrency,
+} from "@/components/currency-pack-card/CurrencyPackCard";
+import { COINS_PER_DIAMOND, type StoreBadge } from "@/services/store";
 import {
   loadModels,
   modelAvatarUrl,
@@ -99,6 +112,19 @@ export function ComponentLabPage() {
   const [holderMode, setHolderMode] = useState<"live" | "skeleton">(
     "skeleton",
   );
+  type LabCssCtaVariant = "default" | "gold" | "purple" | "black" | "red";
+  const [cssCtaVariant, setCssCtaVariant] =
+    useState<LabCssCtaVariant>("default");
+  const [sliderCtaVariant, setSliderCtaVariant] =
+    useState<LabCssCtaVariant>("default");
+  const [dangerCtaDisabled, setDangerCtaDisabled] = useState(false);
+  const [packCurrency, setPackCurrency] =
+    useState<CurrencyPackCurrency>("diamonds");
+  const [packBadge, setPackBadge] = useState<StoreBadge | "none">("Best Value");
+  const [packAmount, setPackAmount] = useState(1200);
+  const [packPrice, setPackPrice] = useState("$19.99");
+  const [packFeatured, setPackFeatured] = useState(true);
+  const [packProcessing, setPackProcessing] = useState(false);
   const [holderPreview, setHolderPreview] = useState<{
     name: string;
     place: string;
@@ -285,6 +311,347 @@ export function ComponentLabPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-8">
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Currency pack card</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Store cash packs ·{" "}
+                <code className="text-ink-secondary">DiamondPackCard</code> /{" "}
+                <code className="text-ink-secondary">CoinPackCard</code> in{" "}
+                <code className="text-ink-secondary">
+                  currency-pack-card/CurrencyPackCard.tsx
+                </code>
+                .
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-full bg-surface-muted p-0.5">
+                {(
+                  [
+                    ["diamonds", "Diamonds"],
+                    ["coins", "Coins"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setPackCurrency(value)}
+                    className={[
+                      "rounded-full px-3 py-1 text-[12px] font-medium transition",
+                      packCurrency === value
+                        ? "bg-white text-black"
+                        : "text-ink-secondary hover:text-ink",
+                    ].join(" ")}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3 text-[12px]">
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Badge
+              <select
+                value={packBadge}
+                onChange={(event) =>
+                  setPackBadge(event.target.value as StoreBadge | "none")
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              >
+                <option value="none">None</option>
+                <option value="Popular">Popular</option>
+                <option value="Best Value">Best Value</option>
+                <option value="Bonus">Bonus</option>
+                <option value="New">New</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Amount
+              <input
+                type="number"
+                min={1}
+                value={packAmount}
+                onChange={(event) =>
+                  setPackAmount(Number(event.target.value) || 0)
+                }
+                className="w-28 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-ink-tertiary">
+              Price
+              <input
+                type="text"
+                value={packPrice}
+                onChange={(event) => setPackPrice(event.target.value)}
+                className="w-28 rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium text-ink"
+              />
+            </label>
+            <label className="flex items-end gap-2 pb-2 text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={packFeatured}
+                onChange={(event) => setPackFeatured(event.target.checked)}
+              />
+              Featured
+            </label>
+            <label className="flex items-end gap-2 pb-2 text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={packProcessing}
+                onChange={(event) => setPackProcessing(event.target.checked)}
+              />
+              Processing
+            </label>
+          </div>
+
+          <div className="mt-6 grid place-items-center rounded-xl bg-[oklch(0.08_0_0)] px-6 py-12">
+            {packCurrency === "coins" ? (
+              <CoinPackCard
+                amount={packAmount}
+                priceLabel={(packAmount * COINS_PER_DIAMOND).toLocaleString(
+                  "en-US",
+                )}
+                badge={packBadge === "none" ? null : packBadge}
+                featured={packFeatured}
+                processing={packProcessing}
+                iconsAnimated
+                onBuy={() => undefined}
+              />
+            ) : (
+              <DiamondPackCard
+                amount={packAmount}
+                priceLabel={packPrice}
+                badge={packBadge === "none" ? null : packBadge}
+                featured={packFeatured}
+                processing={packProcessing}
+                iconsAnimated
+                onBuy={() => undefined}
+              />
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Photo play CTA</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Theme photo-grid button (84×41). Left = live BorderGlow +
+                DiamondLottie. Right = CSS-only twin — variants in{" "}
+                <code className="text-ink-secondary">
+                  component-lab-photo-play-cta.css
+                </code>
+                .
+              </p>
+            </div>
+            <label className="flex flex-col gap-1 text-[11px] font-medium tracking-[0.08em] text-ink-tertiary uppercase">
+              CSS variant
+              <select
+                value={cssCtaVariant}
+                onChange={(event) =>
+                  setCssCtaVariant(event.target.value as LabCssCtaVariant)
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium tracking-normal text-ink normal-case"
+              >
+                <option value="default">Default (pink)</option>
+                <option value="gold">Gold</option>
+                <option value="purple">Purple</option>
+                <option value="black">Black</option>
+                <option value="red">Red</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                Live
+              </p>
+              <div className="mcp-photo-play-cta-lab-card">
+                <img src={staticBackgroundUrl || figmaPoster} alt="" />
+                <McpPhotoPlayCta
+                  playPrice={8}
+                  ariaLabel="Play Photo Cards for 8 diamonds"
+                  onPlay={() => undefined}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                CSS · {cssCtaVariant}
+              </p>
+              <div className="mcp-photo-play-cta-lab-card">
+                <img src={staticBackgroundUrl || figmaPoster} alt="" />
+                <div
+                  className={[
+                    "mcp-photo-play-cta-css-wrap",
+                    `mcp-photo-play-cta-css-wrap--${cssCtaVariant}`,
+                  ].join(" ")}
+                >
+                  <button
+                    type="button"
+                    className={[
+                      "mcp-photo-play-cta-css",
+                      `mcp-photo-play-cta-css--${cssCtaVariant}`,
+                    ].join(" ")}
+                    aria-label="Play Photo Cards for 8 diamonds (CSS)"
+                  >
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                    <span className="mcp-photo-play-cta-css__price">8</span>
+                    <Play
+                      className="mcp-photo-play-cta-css__play"
+                      size={16}
+                      strokeWidth={2.4}
+                      fill="currentColor"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">sliderCTACSS</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Coverflow Buy Pack (159×60 · 12px). Left = live BorderGlow
+                squircle. Right = CSS twin from the photo-play plate — tweak in{" "}
+                <code className="text-ink-secondary">
+                  mcp-photo-play-cta-css.css
+                </code>{" "}
+                (<code className="text-ink-secondary">--slider</code>) or lab
+                overrides.
+              </p>
+            </div>
+            <label className="flex flex-col gap-1 text-[11px] font-medium tracking-[0.08em] text-ink-tertiary uppercase">
+              CSS variant
+              <select
+                value={sliderCtaVariant}
+                onChange={(event) =>
+                  setSliderCtaVariant(event.target.value as LabCssCtaVariant)
+                }
+                className="min-w-[8.5rem] rounded-lg border border-line bg-surface-muted px-2.5 py-1.5 text-[12px] font-medium tracking-normal text-ink normal-case"
+              >
+                <option value="default">Default (pink)</option>
+                <option value="gold">Gold</option>
+                <option value="purple">Purple</option>
+                <option value="black">Black</option>
+                <option value="red">Red</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                Live
+              </p>
+              <CtaButton
+                {...ctaButtonPropsFromTemplate("squircleCTA")}
+                width={159}
+                height={60}
+                cornerRadius={12}
+                strokeWidth={2}
+                auroraBaseColor="#42001b"
+                auroraColorStops={["#aa3c6b", "#ea2e89", "#42001b", "#933e4c"]}
+                auroraRotation={45}
+                glowColors={["#aa085f", "#e00083", "#eb6a00"]}
+                glowColor="326 90 30"
+                strokeColor="rgba(170, 8, 95, 0.42)"
+                labelColor="#ffe0e8"
+                auroraPaused
+                glowAlwaysOn={false}
+                glowOuterBloom="off"
+                costIconAnimated={false}
+                label="Buy Pack"
+                costAmount={80}
+                style={{ ["--cta-aurora-angle" as string]: "45deg" }}
+              />
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                CSS · {sliderCtaVariant}
+              </p>
+              <div
+                className={[
+                  "mcp-photo-play-cta-css-wrap",
+                  "mcp-photo-play-cta-css-wrap--slider",
+                  `mcp-photo-play-cta-css-wrap--${sliderCtaVariant}`,
+                ].join(" ")}
+              >
+                <button
+                  type="button"
+                  className={[
+                    "mcp-photo-play-cta-css",
+                    "mcp-photo-play-cta-css--slider",
+                    `mcp-photo-play-cta-css--${sliderCtaVariant}`,
+                  ].join(" ")}
+                  aria-label="Buy Pack for 80 diamonds (CSS)"
+                >
+                  <span className="mcp-photo-play-cta-css__label">Buy Pack</span>
+                  <span className="mcp-photo-play-cta-css__cost">
+                    <span className="mcp-photo-play-cta-css__price">80</span>
+                    <DiamondLottie
+                      className="mcp-photo-play-cta-css__diamond"
+                      size={16}
+                      aria-hidden
+                    />
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-[15px] font-semibold">Danger CSS CTA</h2>
+              <p className="mt-1 text-[12px] text-ink-tertiary">
+                Red plate used by Delete account (
+                <code className="text-ink-secondary">cssTone=&quot;red&quot;</code>
+                ). Disabled → black plate + paused motion.
+              </p>
+            </div>
+            <label className="flex items-center gap-2 text-[12px] font-medium text-ink-secondary">
+              <input
+                type="checkbox"
+                checked={dangerCtaDisabled}
+                onChange={(event) => setDangerCtaDisabled(event.target.checked)}
+              />
+              Disabled
+            </label>
+          </div>
+          <div className="mt-6 flex flex-wrap items-end justify-center gap-10 rounded-xl bg-[oklch(0.12_0_0)] px-6 py-12">
+            <div className="flex w-full max-w-sm flex-col items-center gap-3">
+              <p className="text-[11px] font-medium tracking-[0.14em] text-ink-tertiary uppercase">
+                {dangerCtaDisabled ? "Disabled" : "Red"}
+              </p>
+              <div className="mcp-photo-play-cta-lab-danger">
+                <CtaButton
+                  forceCss
+                  cssTone="red"
+                  fillParent
+                  type="button"
+                  label="Delete account"
+                  costAmount={null}
+                  strokeWidth={1}
+                  cornerRadius={16}
+                  disabled={dangerCtaDisabled}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-line bg-surface p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>

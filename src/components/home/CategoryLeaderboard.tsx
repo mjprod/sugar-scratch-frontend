@@ -9,6 +9,9 @@ import {
   type LeaderboardRow,
 } from "@/services/homepage";
 import { PackArt } from "./PackArt";
+import "@/components/creator/mcp-photo-play-cta-css.css";
+
+const MOBILE_CTA_QUERY = "(max-width: 980px)";
 
 /** Figma crowns: gold 9:265, silver 9:311, bronze 9:314. */
 const RANK_CROWN_SRC: Record<1 | 2 | 3, string> = {
@@ -68,6 +71,19 @@ export function CategoryLeaderboard({
   const tabsRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const [cssPlayCta, setCssPlayCta] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_CTA_QUERY).matches
+      : false,
+  );
+
+  useEffect(() => {
+    const media = window.matchMedia(MOBILE_CTA_QUERY);
+    const sync = () => setCssPlayCta(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   const updateTabsScrollState = useCallback(() => {
     const el = tabsRef.current;
@@ -227,35 +243,69 @@ export function CategoryLeaderboard({
                 </p>
               </button>
               <div className="category-leaderboard-actions">
-                <div className="category-leaderboard-play">
-                  <CtaButton
-                    {...ctaButtonPropsFromTemplate("squircleCTA")}
-                    fillParent
-                    label="Play"
-                    leadingIcon={
-                      <>
+                <div
+                  className={[
+                    "category-leaderboard-play",
+                    cssPlayCta ? "is-css" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
+                  {cssPlayCta ? (
+                    <div className="mcp-photo-play-cta-css-wrap">
+                      <button
+                        type="button"
+                        className="mcp-photo-play-cta-css mcp-photo-play-cta-css--leaderboard"
+                        aria-label={`Play ${row.creatorName} for ${row.diamondCost} diamonds`}
+                        onClick={() => onPlay(row)}
+                      >
                         <DiamondLottie
-                          className="category-leaderboard-play-diamond"
-                          size={14}
+                          className="mcp-photo-play-cta-css__diamond"
+                          size={11}
                           aria-hidden
                         />
-                        <span className="category-leaderboard-play-cost">
+                        <span className="mcp-photo-play-cta-css__price">
                           {row.diamondCost}
                         </span>
                         <Play
-                          className="category-leaderboard-play-triangle"
+                          className="mcp-photo-play-cta-css__play"
                           size={11}
                           strokeWidth={2.4}
                           fill="currentColor"
                           aria-hidden
                         />
-                      </>
-                    }
-                    costAmount={null}
-                    cornerRadius={999}
-                    aria-label={`Play ${row.creatorName} for ${row.diamondCost} diamonds`}
-                    onClick={() => onPlay(row)}
-                  />
+                      </button>
+                    </div>
+                  ) : (
+                    <CtaButton
+                      {...ctaButtonPropsFromTemplate("squircleCTA")}
+                      fillParent
+                      label="Play"
+                      leadingIcon={
+                        <>
+                          <DiamondLottie
+                            className="category-leaderboard-play-diamond"
+                            size={14}
+                            aria-hidden
+                          />
+                          <span className="category-leaderboard-play-cost">
+                            {row.diamondCost}
+                          </span>
+                          <Play
+                            className="category-leaderboard-play-triangle"
+                            size={11}
+                            strokeWidth={2.4}
+                            fill="currentColor"
+                            aria-hidden
+                          />
+                        </>
+                      }
+                      costAmount={null}
+                      cornerRadius={999}
+                      aria-label={`Play ${row.creatorName} for ${row.diamondCost} diamonds`}
+                      onClick={() => onPlay(row)}
+                    />
+                  )}
                 </div>
               </div>
             </div>

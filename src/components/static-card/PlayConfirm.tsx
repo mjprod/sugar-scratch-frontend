@@ -1,9 +1,15 @@
-import { useLayoutEffect, useRef, useState, type AnimationEvent as ReactAnimationEvent } from "react";
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type AnimationEvent as ReactAnimationEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import "@/components/motion-card/MotionCard.css";
 import "@/features/packs/packs.css";
+import "@/features/packs/packs-entry.css";
 
 /** Same box as the portaled Buy Pack confirm. Pixels, not rem:
  * the creator page root is 12px, so 14.25rem would undershoot 228×158. */
@@ -13,6 +19,31 @@ const LEAVE_ANIMATIONS = new Set([
   "coverflow-confirm-leave",
   "coverflow-buy-confirm-leave",
 ]);
+
+/** Resolve the rect we pin to, and whether to prefer opening upward. */
+function anchorPlacement(anchor: HTMLElement): {
+  rect: DOMRect;
+  preferAbove: boolean;
+} {
+  // Photo grid CTAs sit on the lower fold — pin to the button and open up.
+  if (anchor.closest(".mcp-photo-play-cta")) {
+    return { rect: anchor.getBoundingClientRect(), preferAbove: true };
+  }
+  const card = anchor.closest(".static-card-holder__face, .mcp-photo-cell");
+  if (card) {
+    return {
+      rect: card.getBoundingClientRect(),
+      preferAbove: Boolean(anchor.closest(".mcp-photo-cell")),
+    };
+  }
+  const ctaHost = anchor.closest(
+    ".coverflow-compact-play-cta, .cpv2-motion-tile-play-cta, .motion-card-holder__play",
+  );
+  return {
+    rect: (ctaHost ?? anchor).getBoundingClientRect(),
+    preferAbove: false,
+  };
+}
 
 export function PlayConfirm({
   anchor,
@@ -32,38 +63,52 @@ export function PlayConfirm({
   onLeaveEnd?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
   const [box, setBox] = useState<{
     top: number;
     left: number;
     arrow: number;
+    above: boolean;
   } | null>(null);
 
   useLayoutEffect(() => {
     const place = () => {
-      const anchorRect = anchor.getBoundingClientRect();
-      const card = anchor.closest(".static-card-holder__face");
-      const rect = card?.getBoundingClientRect() ?? anchorRect;
+      const { rect, preferAbove } = anchorPlacement(anchor);
       const margin = 12;
+      const gap = 8;
       const half = PLAY_CONFIRM_WIDTH / 2;
       const center = rect.left + rect.width / 2;
       // visualViewport: a transformed overlay (scale-in) can make
       // window.innerWidth larger than the box the user actually sees.
       const view = window.visualViewport;
       const viewLeft = view?.offsetLeft ?? 0;
+      const viewTop = view?.offsetTop ?? 0;
       const viewWidth = view?.width ?? window.innerWidth;
+      const viewHeight = view?.height ?? window.innerHeight;
       const minLeft = viewLeft + margin + half;
       const maxLeft = viewLeft + viewWidth - margin - half;
-      const left = Math.min(Math.max(center, minLeft), Math.max(minLeft, maxLeft));
-      // Arrow tracks the card. A shifted popup would otherwise point at mid-dialog.
+      const left = Math.min(
+        Math.max(center, minLeft),
+        Math.max(minLeft, maxLeft),
+      );
       const arrow = Math.min(
         PLAY_CONFIRM_WIDTH - 16,
         Math.max(16, center - (left - half)),
       );
-      setBox({
-        top: rect.bottom + 8,
-        left,
-        arrow,
-      });
+      const spaceBelow = viewTop + viewHeight - rect.bottom - gap;
+      const spaceAbove = rect.top - viewTop - gap;
+      const above =
+        preferAbove ||
+        (spaceBelow < PLAY_CONFIRM_HEIGHT && spaceAbove > spaceBelow);
+      const rawTop = above
+        ? rect.top - PLAY_CONFIRM_HEIGHT - gap
+        : rect.bottom + gap;
+      const top = Math.min(
+        Math.max(rawTop, viewTop + margin),
+        viewTop + viewHeight - PLAY_CONFIRM_HEIGHT - margin,
+      );
+      setBox({ top, left, arrow, above });
     };
     place();
     window.addEventListener("resize", place);
@@ -83,16 +128,18 @@ export function PlayConfirm({
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (ref.current?.contains(target) || anchor.contains(target)) return;
-      onCancel();
+      onCancelRef.current();
     };
+    // iOS often delivers a trailing pointer from the opening tap — wait out the
+    // click synthesis window before listening for outside dismiss.
     const id = window.setTimeout(() => {
       document.addEventListener("pointerdown", onPointerDown);
-    }, 0);
+    }, 350);
     return () => {
       window.clearTimeout(id);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [anchor, onCancel]);
+  }, [anchor]);
 
   function handleLeaveEnd(event: ReactAnimationEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
@@ -107,6 +154,7 @@ export function PlayConfirm({
         "coverflow-cart-remove-confirm",
         "static-card-buy-confirm",
         "is-anchored",
+        box?.above ? "is-above" : "",
         leaving ? "is-leaving" : "",
       ]
         .filter(Boolean)

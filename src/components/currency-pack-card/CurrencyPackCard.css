@@ -1,0 +1,361 @@
+@keyframes currency-pack-card-holo {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
+.currency-pack-card {
+  position: relative;
+  width: 100%;
+  max-width: 14rem;
+  min-height: 20.8rem;
+  border-radius: 18px;
+  border: 1px solid oklch(1.000 0.000 89.9 / 0.12);
+  background: linear-gradient(103deg, oklch(0.213 0.110 306.3), oklch(0.285 0.149 303.5), oklch(0.209 0.107 306.7), oklch(0.244 0.127 304.8));
+  box-shadow:
+    7px 7px 1px -7px oklch(0.680 0.208 306.9) inset,
+    -15px -6px 2px -14.5px oklch(0.680 0.208 306.9) inset,
+    0px 30px 11px -32px oklch(0.830 0.102 301.7),
+    0px 23px 23px -25px oklch(0.716 0.199 314.4 / 0.45),
+    34px 43px 50px -50px oklch(0.570 0.297 304.4 / 0.97),
+    -50px 48px 50px -50px oklch(0.570 0.297 304.4 / 0.37);
+  overflow: hidden;
+  isolation: isolate;
+  color: oklch(1.000 0 0);
+}
+
+.currency-pack-card__frame {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: inherit;
+  padding: 0.4rem;
+}
+
+/* Same orbit model as cssCTA (`--mcp-cta-grad-angle`); idle spin is slower. */
+.currency-pack-card__plate {
+  --mcp-cta-grad-angle: 50deg;
+  --mcp-cta-grad-angle-start: 50deg;
+  --currency-pack-orbit-duration: 24s;
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: calc(20.8rem - 10px);
+  height: 100%;
+  padding: var(--space-0-5);
+  border-radius: 13px;
+  background: linear-gradient(
+    var(--mcp-cta-grad-angle),
+    oklch(0.403 0.151 308.7),
+    oklch(0.707 0.211 311.0) 50%,
+    oklch(0.682 0.083 346.7) 54%,
+    oklch(0.907 0.060 345.6) 56%,
+    oklch(0.322 0.127 307.5) 80%,
+    oklch(0.403 0.151 308.7)
+  );
+  overflow: hidden;
+  animation: mcp-photo-play-cta-grad-orbit var(--currency-pack-orbit-duration)
+    linear infinite;
+}
+
+/* Device tilt on: freeze CSS orbit; angle driven by McpCtaGradMotionRoot. */
+.currency-pack-card__plate.is-motion-grad {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .currency-pack-card__plate {
+    animation: none;
+  }
+}
+
+.currency-pack-card__well {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: calc(20.8rem - 14px);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+  border-radius: 11px;
+  background: linear-gradient(
+    135deg,
+    oklch(0.365 0.192 303.1) 1%,
+    oklch(0.498 0.255 306.0) 5%,
+    oklch(0.135 0.062 311.1) 16%,
+    oklch(0.298 0.088 308.9) 13%,
+    oklch(0.162 0.082 309.6) 33%,
+    oklch(0.204 0.104 307.8) 33%,
+    oklch(0.147 0.075 310.1) 44%,
+    oklch(0.115 0.026 315.2) 80%,
+    oklch(0.542 0.244 308.9) 100%
+  );
+  text-align: center;
+  overflow: hidden;
+}
+
+.currency-pack-card__well::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background: radial-gradient(
+    ellipse 120% 60% at 50% 110%,
+    oklch(1.000 0.000 89.9 / 0.10),
+    transparent 55%
+  );
+}
+
+@media (max-width: 1023px) {
+  .currency-pack-card,
+  .currency-pack-card * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+.currency-pack-card.is-featured::before {
+  content: none;
+}
+
+/* Coins: same L/C structure as Diamonds, hue pivoted ~306° → ~90° (gold). */
+.currency-pack-card.is-coins {
+  background: linear-gradient(
+    103deg,
+    oklch(0.213 0.033 78.3),
+    oklch(0.285 0.045 75.5),
+    oklch(0.209 0.032 78.7),
+    oklch(0.244 0.038 76.8)
+  );
+  box-shadow:
+    7px 7px 1px -7px oklch(0.680 0.062 78.9) inset,
+    -15px -6px 2px -14.5px oklch(0.680 0.062 78.9) inset,
+    0px 30px 11px -32px oklch(0.830 0.031 73.7),
+    0px 23px 23px -25px oklch(0.716 0.060 86.4 / 0.45),
+    34px 43px 50px -50px oklch(0.570 0.089 76.4 / 0.97),
+    -50px 48px 50px -50px oklch(0.570 0.089 76.4 / 0.37);
+}
+
+.currency-pack-card.is-coins .currency-pack-card__plate {
+  background: linear-gradient(
+    var(--mcp-cta-grad-angle),
+    oklch(0.403 0.045 80.7),
+    oklch(0.707 0.063 83.0) 50%,
+    oklch(0.682 0.025 88.0) 54%,
+    oklch(0.907 0.018 86.0) 56%,
+    oklch(0.322 0.038 79.5) 80%,
+    oklch(0.403 0.045 80.7)
+  );
+}
+
+.currency-pack-card.is-coins .currency-pack-card__well {
+  background: linear-gradient(
+    135deg,
+    oklch(0.365 0.058 75.1) 1%,
+    oklch(0.498 0.076 78.0) 5%,
+    oklch(0.135 0.019 83.1) 16%,
+    oklch(0.298 0.026 80.9) 13%,
+    oklch(0.162 0.025 81.6) 33%,
+    oklch(0.204 0.032 79.8) 33%,
+    oklch(0.147 0.022 82.1) 44%,
+    oklch(0.115 0.007 87.2) 80%,
+    oklch(0.542 0.074 80.9) 100%
+  );
+}
+
+.currency-pack-card.is-coins .currency-pack-card__icon {
+  filter:
+    drop-shadow(0 0 7px oklch(0.711 0.064 84.0))
+    drop-shadow(0 0 40px oklch(0.562 0.087 77.4));
+}
+
+.currency-pack-card.is-coins .currency-pack-card__badge.is-popular {
+  color: oklch(0.828 0.030 78.0);
+  border-color: oklch(0.828 0.030 78.0 / 0.35);
+}
+
+.currency-pack-card.is-coins .currency-pack-card__badge.is-best {
+  color: oklch(0.783 0.045 78.0);
+  border-color: oklch(0.669 0.074 78.0 / 0.45);
+}
+
+.currency-pack-card.is-coins .currency-pack-card__badge.is-bonus {
+  color: oklch(0.811 0.030 78.0);
+  border-color: oklch(0.811 0.030 78.0 / 0.35);
+}
+
+.currency-pack-card__badge {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  z-index: 2;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 999px;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid oklch(1.000 0.000 89.9 / 0.12);
+  background: oklch(0.000 0.000 0.0 / 0.55);
+  color: oklch(1.000 0 0);
+}
+
+.currency-pack-card__badge.is-popular {
+  color: oklch(0.828 0.101 230.3);
+  border-color: oklch(0.828 0.101 230.3 / 0.35);
+}
+
+.currency-pack-card__badge.is-best {
+  color: oklch(0.783 0.149 351.0);
+  border-color: oklch(0.669 0.246 357.3 / 0.45);
+}
+
+.currency-pack-card__badge.is-bonus {
+  color: oklch(0.811 0.101 293.6);
+  border-color: oklch(0.811 0.101 293.6 / 0.35);
+}
+
+.currency-pack-card__badge.is-free {
+  color: oklch(0.828 0.101 145.3);
+  border-color: oklch(0.828 0.101 145.3 / 0.35);
+}
+
+.currency-pack-card__kicker {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: var(--space-7) 0 0;
+  align-self: center;
+  white-space: nowrap;
+  font-size: var(--text-display);
+  font-weight: 900;
+  letter-spacing: -1px;
+  text-transform: uppercase;
+  color: oklch(1.000 0.000 89.9 / 0.92);
+}
+
+.currency-pack-card__icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: auto;
+  max-width: 100%;
+  height: 4.4rem;
+  margin-top: var(--space-3);
+  transform: translateY(10%);
+  /* filter drop-shadow has no spread; -2px from the requested stack omitted. */
+  filter:
+    drop-shadow(0 0 6px oklch(0.711 0.212 312.0))
+    drop-shadow(0 0 32px oklch(0.562 0.291 305.4));
+}
+
+.currency-pack-card__icon-mark.is-center {
+  position: relative;
+  z-index: 2;
+  transform: translateY(10%);
+}
+
+.currency-pack-card__icon-mark.is-side {
+  position: relative;
+  z-index: 1;
+  opacity: 0.8;
+  /* Pull under the center mark so they read as behind it. */
+  margin-inline: -1.7rem;
+  transform: translateY(0.35rem) scale(0.88);
+}
+
+.currency-pack-card__amount-box {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: 0.5rem;
+  border: 1px solid oklch(1.000 0.000 89.9 / 0.08);
+  /* Diamond mode — same L/C stack as gold, hue pivoted ~90° → ~306°. */
+  background: linear-gradient(
+    135deg,
+    oklch(0.36 0.19 319.1 / 1) 1%,
+    oklch(0.44 0.1 311.3) 8%,
+    oklch(0.84 0.15 295.0 / 0.78) 13%,
+    oklch(0 0 0) 33%,
+    oklch(0.31 0.07 313.0) 53%,
+    oklch(0.15 0.07 316.1 / 1) 77%,
+    oklch(0.12 0.03 321.2 / 1) 80%,
+    oklch(0.54 0.24 314.9 / 1) 98%
+  );
+  corner-shape: bevel;
+}
+
+.currency-pack-card.is-coins .currency-pack-card__amount-box {
+  background: linear-gradient(
+    135deg,
+    oklch(0.36 0.07 61.1 / 1) 1%,
+    oklch(0.42 0.09 76.63) 8%,
+    oklch(0.78 0.14 71.51) 13%,
+    oklch(0 0.000 0) 33%,
+    oklch(0.41 0.07 69.74) 53%,
+    oklch(0.15 0.026 88.1 / 1) 77%,
+    oklch(0.12 0.011 93.2 / 1) 80%,
+    oklch(0.54 0.086 86.9 / 1) 98%
+  );
+}
+
+.currency-pack-card__amount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  color: oklch(1.000 0 0);
+}
+
+.currency-pack-card__amount-mark {
+  display: block;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+  line-height: 0;
+}
+
+.currency-pack-card__amount-mark img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+}
+
+.currency-pack-card__buy {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  /* Keep CTA hit target / type at full size while the plate scales down. */
+  height: 48px;
+  margin-top: var(--space-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .currency-pack-card.is-featured::before {
+    animation: none;
+  }
+}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import {
   DesktopCoverFlow,
@@ -59,6 +60,32 @@ type ContinueTile = {
  * Figma MyCollection "Continue where you left off…" strip (node 123:491).
  * Unopened packs + ready scratches as compact portrait tiles with play CTA.
  */
+function creatorKey(value: string | null | undefined): string {
+  return (value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^@+/, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+function belongsToCreator(
+  wantedKey: string,
+  models: ReturnType<typeof useModels>,
+  hints: { creatorId?: string; name?: string; packId?: string },
+): boolean {
+  if (!wantedKey) return true;
+  const direct = creatorKey(hints.creatorId);
+  if (direct && direct === wantedKey) return true;
+  const model = matchModel(models, {
+    packId: hints.packId || hints.creatorId,
+    name: hints.name,
+  });
+  if (!model) return false;
+  return [model.id, model.label, model.influencerName].some(
+    (value) => creatorKey(value) === wantedKey,
+  );
+}
+
 export function ReadyToReveal({
   onOpenPack,
   onScratch,
@@ -68,6 +95,8 @@ export function ReadyToReveal({
   inventoryRevision = 0,
   /** Keep the continue shell + #ready-heading when reveal=packs lands empty. */
   forceEmptyReveal = false,
+  /** When set, only show packs/scratches for this creator. */
+  creatorId,
 }: {
   onOpenPack: (pack: UnopenedPack) => void;
   onScratch: (group: ScratchReadyGroup) => void;
@@ -77,20 +106,36 @@ export function ReadyToReveal({
   unopenedPacks?: UnopenedPack[];
   inventoryRevision?: number;
   forceEmptyReveal?: boolean;
+  creatorId?: string;
 }) {
   void _onExplorePacks;
   const [searchParams] = useSearchParams();
   const revealPacks =
     forceEmptyReveal || searchParams.get("reveal") === "packs";
   const models = useModels();
-  const packs = useMemo(
-    () => unopenedPacks ?? listUnopenedPackShelf(),
-    [unopenedPacks, inventoryRevision],
-  );
-  const scratches = useMemo(
-    () => scratchGroups ?? listAllReadyScratch(),
-    [scratchGroups, inventoryRevision],
-  );
+  const wantedCreator = creatorKey(creatorId);
+  const packs = useMemo(() => {
+    const all = unopenedPacks ?? listUnopenedPackShelf();
+    if (!wantedCreator) return all;
+    return all.filter((pack) =>
+      belongsToCreator(wantedCreator, models, {
+        creatorId: pack.creatorId,
+        name: pack.creator,
+        packId: pack.catalogPackId ?? pack.id,
+      }),
+    );
+  }, [unopenedPacks, inventoryRevision, models, wantedCreator]);
+  const scratches = useMemo(() => {
+    const all = scratchGroups ?? listAllReadyScratch();
+    if (!wantedCreator) return all;
+    return all.filter((group) =>
+      belongsToCreator(wantedCreator, models, {
+        creatorId: group.creatorId,
+        name: group.creatorName,
+        packId: group.id.replace(/^(photo|motion):/, ""),
+      }),
+    );
+  }, [scratchGroups, inventoryRevision, models, wantedCreator]);
 
   const tiles = useMemo(() => {
     const packTiles = packs.map((pack) => {
@@ -259,12 +304,21 @@ function ContinueSection({
 }) {
   const items = useMemo(() => tiles.map(tileToIteration), [tiles]);
   const desktop = useContinueDesktop();
+  const [open, setOpen] = useState(true);
+  const [chevronAnimReady, setChevronAnimReady] = useState(false);
+  const [chevronPlayId, setChevronPlayId] = useState(0);
   const activateById = useMemo(() => {
     const map = new Map(tiles.map((tile) => [tile.id, tile.onActivate]));
     return (item: Iteration) => {
       map.get(item.id)?.();
     };
   }, [tiles]);
+
+  function setExpanded(next: boolean) {
+    setChevronAnimReady(true);
+    setChevronPlayId((id) => id + 1);
+    setOpen(next);
+  }
 
   useEffect(() => {
     if (scratchCount > 0) {
@@ -276,6 +330,9 @@ function ContinueSection({
 
   useEffect(() => {
     if (!revealPacks) return;
+    setChevronAnimReady(true);
+    setChevronPlayId((id) => id + 1);
+    setOpen(true);
     document.getElementById("ready-heading")?.scrollIntoView({
       block: "start",
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -297,38 +354,74 @@ function ContinueSection({
         ]
           .filter(Boolean)
           .join(" ")}
+        data-open={open ? "true" : "false"}
       >
-        <h2 id="ready-heading" className="mc-continue-title">
-          Continue playing
-        </h2>
-        {items.length > 0 ? (
-          <div className="mc-continue-carousel">
-            {desktop ? (
-              <DesktopCoverFlow
-                items={items}
-                selectedId={null}
-                glow="var(--color-page-title)"
-                playOnlyCta
-                cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
-                buying={false}
-                addedToPocket={false}
-                confirmBuy={false}
-                onSelect={() => {}}
-                onDeselect={() => {}}
-                onFocusChange={() => {}}
-                onBuy={activateById}
-              />
+        <div className="mc-continue-head-pad">
+          <div className="mc-continue-head">
+            <button
+              type="button"
+              id="ready-heading"
+              className="mc-continue-title"
+              aria-expanded={open}
+              aria-controls="mc-continue-body"
+              onClick={() => setExpanded(!open)}
+            >
+              Continue playing
+            </button>
+            <button
+              type="button"
+              className="mc-continue-expand"
+              aria-expanded={open}
+              aria-controls="mc-continue-body"
+              aria-label={
+                open ? "Collapse continue playing" : "Expand continue playing"
+              }
+              onClick={() => setExpanded(!open)}
+            >
+              <span
+                key={`${chevronPlayId}-${open ? "open" : "closed"}`}
+                className="cpv2-profile-expand-chevron"
+                data-open={open ? "true" : "false"}
+                data-chevron-anim={chevronAnimReady ? "true" : "false"}
+                aria-hidden="true"
+              >
+                <ChevronDown className="size-5" strokeWidth={2.2} />
+              </span>
+            </button>
+          </div>
+        </div>
+        <div id="mc-continue-body" className="mc-continue-body">
+          <div className="mc-continue-body-inner">
+            {items.length > 0 ? (
+              <div className="mc-continue-carousel">
+                {desktop ? (
+                  <DesktopCoverFlow
+                    items={items}
+                    selectedId={null}
+                    glow="var(--color-page-title)"
+                    playOnlyCta
+                    cameraSettings={{ ...HOME_COVERFLOW_CAMERA, packsY: -0.74 }}
+                    buying={false}
+                    addedToPocket={false}
+                    confirmBuy={false}
+                    onSelect={() => {}}
+                    onDeselect={() => {}}
+                    onFocusChange={() => {}}
+                    onBuy={activateById}
+                  />
+                ) : (
+                  <MobileCssCarousel
+                    items={items}
+                    compact
+                    onSelect={activateById}
+                  />
+                )}
+              </div>
             ) : (
-              <MobileCssCarousel
-                items={items}
-                compact
-                onSelect={activateById}
-              />
+              <div className="mc-continue-row" role="list" />
             )}
           </div>
-        ) : (
-          <div className="mc-continue-row" role="list" />
-        )}
+        </div>
       </div>
     </section>
   );

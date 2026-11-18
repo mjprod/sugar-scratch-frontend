@@ -569,10 +569,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const openCreator = useCallback(
     (id: string, themeId?: string) => {
       noteCreatorEngagement(id);
-      const query = themeId?.trim()
-        ? `?theme=${encodeURIComponent(themeId.trim())}`
-        : "";
-      memoryNavigate(`${Paths.creator(id)}${query}`);
+      const theme = themeId?.trim();
+      memoryNavigate(
+        theme ? Paths.creatorTheme(id, theme) : Paths.creator(id),
+      );
     },
     [],
   );

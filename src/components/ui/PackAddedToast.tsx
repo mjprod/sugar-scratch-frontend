@@ -4,11 +4,20 @@ import { countCartPacks, subscribeCart } from "@/services/cart";
 const TOAST_MS = 2000;
 const MAX_VISIBLE = 3;
 const EXIT_MS = 240;
+const NOT_ENOUGH_DIAMONDS_EVENT = "sugar:not-enough-diamonds";
+
+type ToastKind = "pocket" | "diamonds";
 
 type ToastItem = {
   id: number;
+  kind: ToastKind;
   leaving: boolean;
 };
+
+export function notifyNotEnoughDiamonds() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(NOT_ENOUGH_DIAMONDS_EVENT));
+}
 
 export function PackAddedToast() {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -43,12 +52,12 @@ export function PackAddedToast() {
       );
     }
 
-    function pushToast() {
+    function pushToast(kind: ToastKind) {
       const id = nextIdRef.current++;
       setToasts((current) => {
         const overflow = current.filter((toast) => !toast.leaving).slice(MAX_VISIBLE - 1);
         overflow.forEach((toast) => startLeave(toast.id));
-        return [{ id, leaving: false }, ...current];
+        return [{ id, kind, leaving: false }, ...current];
       });
       hideTimersRef.current.set(
         id,
@@ -57,17 +66,21 @@ export function PackAddedToast() {
     }
 
     let previousCount = countCartPacks();
-    const unsubscribe = subscribeCart(() => {
+    const unsubscribeCart = subscribeCart(() => {
       const count = countCartPacks();
       const added = Math.max(0, count - previousCount);
       previousCount = count;
-      for (let i = 0; i < added; i += 1) pushToast();
+      for (let i = 0; i < added; i += 1) pushToast("pocket");
     });
+
+    const onNotEnoughDiamonds = () => pushToast("diamonds");
+    window.addEventListener(NOT_ENOUGH_DIAMONDS_EVENT, onNotEnoughDiamonds);
 
     const hideTimers = hideTimersRef.current;
     const leaveTimers = leaveTimersRef.current;
     return () => {
-      unsubscribe();
+      unsubscribeCart();
+      window.removeEventListener(NOT_ENOUGH_DIAMONDS_EVENT, onNotEnoughDiamonds);
       hideTimers.forEach((timer) => window.clearTimeout(timer));
       leaveTimers.forEach((timer) => window.clearTimeout(timer));
       hideTimers.clear();
@@ -84,8 +97,11 @@ export function PackAddedToast() {
           key={toast.id}
           className={[
             "pack-added-toast",
+            toast.kind === "diamonds" ? "pack-added-toast--diamonds" : null,
             toast.leaving ? "is-leaving" : "is-visible",
-          ].join(" ")}
+          ]
+            .filter(Boolean)
+            .join(" ")}
           style={{
             ["--pack-added-toast-offset" as string]: `${index * 2}px`,
             zIndex: toasts.length - index,
@@ -93,7 +109,11 @@ export function PackAddedToast() {
           role="status"
         >
           <span className="pack-added-toast__strip" aria-hidden="true" />
-          <p className="pack-added-toast__copy">Pack added to Pocket</p>
+          <p className="pack-added-toast__copy">
+            {toast.kind === "diamonds"
+              ? "Not enough Diamonds"
+              : "Pack added to Pocket"}
+          </p>
         </div>
       ))}
     </div>

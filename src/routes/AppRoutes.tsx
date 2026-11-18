@@ -20,6 +20,16 @@ const RankPage = lazy(() =>
 const CreatorPage = lazy(() =>
   import("@/pages/CreatorPage").then((m) => ({ default: m.CreatorPage })),
 );
+const CreatorPacksPage = lazy(() =>
+  import("@/pages/CreatorPacksPage").then((m) => ({
+    default: m.CreatorPacksPage,
+  })),
+);
+const CreatorThemePage = lazy(() =>
+  import("@/pages/CreatorThemePage").then((m) => ({
+    default: m.CreatorThemePage,
+  })),
+);
 const MotionCardPage = lazy(() =>
   import("@/pages/MotionCardPage").then((m) => ({ default: m.MotionCardPage })),
 );
@@ -58,6 +68,13 @@ const AudioTestPage = LABS_ENABLED
   ? lazy(() =>
       import("@/pages/AudioTestPage").then((m) => ({
         default: m.AudioTestPage,
+      })),
+    )
+  : NoLabPage;
+const CardOpenTestPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/CardOpenTestPage").then((m) => ({
+        default: m.CardOpenTestPage,
       })),
     )
   : NoLabPage;
@@ -305,6 +322,11 @@ export function AppRoutes() {
               }
             />
             <Route path="creator/:id" element={<CreatorPage />} />
+            <Route path="creator/:id/packs" element={<CreatorPacksPage />} />
+            <Route
+              path="creator/:id/theme/:themeId"
+              element={<CreatorThemePage />}
+            />
             <Route
               path="creator/:id/motion/:cardId"
               element={<MotionCardPage />}
@@ -490,6 +512,14 @@ export function AppRoutes() {
                     <GameCatalogRoute>
                       <AudioTestPage />
                     </GameCatalogRoute>
+                  }
+                />
+                <Route
+                  path="card-open-test"
+                  element={
+                    <CatalogProvider>
+                      <CardOpenTestPage />
+                    </CatalogProvider>
                   }
                 />
               </>
