@@ -926,23 +926,31 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-clear-pop 520ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(1) {
-  animation-delay: 0ms;
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-cleared .top-symbol-slot {
+    animation-delay: calc((sibling-index() - 1) * 40ms);
+  }
 }
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(2) {
-  animation-delay: 40ms;
-}
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(3) {
-  animation-delay: 80ms;
-}
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(4) {
-  animation-delay: 120ms;
-}
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(5) {
-  animation-delay: 160ms;
-}
-.top-symbol-bar.is-cleared .top-symbol-slot:nth-child(6) {
-  animation-delay: 200ms;
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(5) {
+    animation-delay: 160ms;
+  }
+  .top-symbol-bar.is-cleared .top-symbol-slot:nth-child(6) {
+    animation-delay: 200ms;
+  }
 }
 
 @keyframes top-bar-slot-clear-pop {
@@ -1014,36 +1022,50 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-go-dormant 520ms cubic-bezier(0.33, 1, 0.4, 1) both;
 }
 
-/* Dormant cascade starts when is-dormant lands (after FLIP), so short stagger. */
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(6)
-  .game-symbol-lottie {
-  animation-delay: 0ms;
+/* Dormant cascade starts when is-dormant lands (after FLIP), so short stagger.
+   Right→left: later siblings animate first (sibling-count - sibling-index). */
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-phase-docked .top-symbol-slot.is-dormant {
+    --dormant-stagger: calc((sibling-count() - sibling-index()) * 40ms);
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant
+    .game-symbol-lottie {
+    animation-delay: var(--dormant-stagger);
+  }
 }
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(5)
-  .game-symbol-lottie {
-  animation-delay: 40ms;
-}
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(4)
-  .game-symbol-lottie {
-  animation-delay: 80ms;
-}
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(3)
-  .game-symbol-lottie {
-  animation-delay: 120ms;
-}
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(2)
-  .game-symbol-lottie {
-  animation-delay: 160ms;
-}
-.top-symbol-bar.is-phase-docked
-  .top-symbol-slot.is-dormant:nth-child(1)
-  .game-symbol-lottie {
-  animation-delay: 200ms;
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(6)
+    .game-symbol-lottie {
+    animation-delay: 0ms;
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(5)
+    .game-symbol-lottie {
+    animation-delay: 40ms;
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(4)
+    .game-symbol-lottie {
+    animation-delay: 80ms;
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(3)
+    .game-symbol-lottie {
+    animation-delay: 120ms;
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(2)
+    .game-symbol-lottie {
+    animation-delay: 160ms;
+  }
+  .top-symbol-bar.is-phase-docked
+    .top-symbol-slot.is-dormant:nth-child(1)
+    .game-symbol-lottie {
+    animation-delay: 200ms;
+  }
 }
 
 @keyframes top-bar-slot-go-dormant {
@@ -1216,35 +1238,48 @@ html[data-pp-lottie-outline="1"] .pack-progress__icon {
   animation: top-bar-slot-found-pulse 700ms ease-in-out 720ms infinite;
 }
 
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(1)
-  .game-symbol-lottie {
-  animation-delay: 720ms;
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-phase-showcase .top-symbol-slot.is-matched.is-pulsing {
+    --pulse-stagger: calc(720ms + (sibling-index() - 1) * 60ms);
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing
+    .game-symbol-lottie {
+    animation-delay: var(--pulse-stagger);
+  }
 }
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(2)
-  .game-symbol-lottie {
-  animation-delay: 780ms;
-}
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(3)
-  .game-symbol-lottie {
-  animation-delay: 840ms;
-}
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(4)
-  .game-symbol-lottie {
-  animation-delay: 900ms;
-}
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(5)
-  .game-symbol-lottie {
-  animation-delay: 960ms;
-}
-.top-symbol-bar.is-phase-showcase
-  .top-symbol-slot.is-matched.is-pulsing:nth-child(6)
-  .game-symbol-lottie {
-  animation-delay: 1020ms;
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(1)
+    .game-symbol-lottie {
+    animation-delay: 720ms;
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(2)
+    .game-symbol-lottie {
+    animation-delay: 780ms;
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(3)
+    .game-symbol-lottie {
+    animation-delay: 840ms;
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(4)
+    .game-symbol-lottie {
+    animation-delay: 900ms;
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(5)
+    .game-symbol-lottie {
+    animation-delay: 960ms;
+  }
+  .top-symbol-bar.is-phase-showcase
+    .top-symbol-slot.is-matched.is-pulsing:nth-child(6)
+    .game-symbol-lottie {
+    animation-delay: 1020ms;
+  }
 }
 
 @keyframes top-bar-slot-found-pulse {
@@ -2771,23 +2806,31 @@ html[data-toast-plate-outline="1"] .scratch-frame-progress__feedback::after {
   opacity: 0.45;
 }
 
-.game-result-symbol.is-matched:nth-child(1) {
-  animation-delay: 520ms;
+@supports (animation-delay: calc(sibling-index() * 0.1s)) {
+  .game-result-symbol.is-matched {
+    animation-delay: calc(520ms + (sibling-index() - 1) * 60ms);
+  }
 }
-.game-result-symbol.is-matched:nth-child(2) {
-  animation-delay: 580ms;
-}
-.game-result-symbol.is-matched:nth-child(3) {
-  animation-delay: 640ms;
-}
-.game-result-symbol.is-matched:nth-child(4) {
-  animation-delay: 700ms;
-}
-.game-result-symbol.is-matched:nth-child(5) {
-  animation-delay: 760ms;
-}
-.game-result-symbol.is-matched:nth-child(6) {
-  animation-delay: 820ms;
+
+@supports not (animation-delay: calc(sibling-index() * 0.1s)) {
+  .game-result-symbol.is-matched:nth-child(1) {
+    animation-delay: 520ms;
+  }
+  .game-result-symbol.is-matched:nth-child(2) {
+    animation-delay: 580ms;
+  }
+  .game-result-symbol.is-matched:nth-child(3) {
+    animation-delay: 640ms;
+  }
+  .game-result-symbol.is-matched:nth-child(4) {
+    animation-delay: 700ms;
+  }
+  .game-result-symbol.is-matched:nth-child(5) {
+    animation-delay: 760ms;
+  }
+  .game-result-symbol.is-matched:nth-child(6) {
+    animation-delay: 820ms;
+  }
 }
 
 @keyframes game-result-symbol-pop {

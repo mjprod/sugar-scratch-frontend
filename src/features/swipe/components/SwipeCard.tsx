@@ -45,7 +45,7 @@ function releaseVideoDecoder(video: HTMLVideoElement) {
       video.removeAttribute('src')
       video.removeAttribute('poster')
       // Empty <source> children if any ever appear.
-      while (video.firstChild) video.removeChild(video.firstChild)
+      video.replaceChildren()
       video.load()
     } catch {
       /* ignore */

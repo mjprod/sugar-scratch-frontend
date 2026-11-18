@@ -771,7 +771,7 @@ function PaymentGateway({
                 CVC
               </span>
               <input
-                type="password"
+                type="text"
                 inputMode="numeric"
                 name="cc-csc"
                 autoComplete="cc-csc"
