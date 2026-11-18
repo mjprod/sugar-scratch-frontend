@@ -14,7 +14,7 @@ import { CtaButton } from "@/components/cta";
 import { useAuth } from "@/contexts/useAuth";
 import "@/components/creator/mcp-photo-play-cta-css.css";
 import { usePlayedCards } from "@/hooks/usePlayedCards";
-import { useRegisterCardPlay } from "@/hooks/useRegisterCardPlay";
+import { useRegisterCardPlayOutcome } from "@/hooks/useRegisterCardPlay";
 import { CatalogProvider } from "@/shared/catalog/CatalogContext";
 import { useCreatorCollection } from "@/features/collection/useCreatorCollection";
 import {
@@ -239,8 +239,8 @@ function CreatorThemeScreenInner({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const returnCardId = searchParams.get("card")?.trim() || "";
-  const { authed } = useAuth();
-  const registerPlay = useRegisterCardPlay();
+  const { authed, requireAuth } = useAuth();
+  const registerPlay = useRegisterCardPlayOutcome();
   const { isPlayed } = usePlayedCards();
   const [buying, setBuying] = useState(false);
   const collection = useCreatorCollection(modelId);
@@ -391,12 +391,17 @@ function CreatorThemeScreenInner({
     [activeCard?.id, activeCard?.photoUrls, activeCardId, filled, showPersonal],
   );
 
-  const photoPlayed = slots.map((_, index) =>
-    isPlayed(
-      "photo",
-      photoScratchIdForSlot(activeCardId ?? "theme", index),
-    ),
+  const boardMotion = useMemo(
+    () =>
+      boardTheme?.motionCards.find((card) => card.id === activeCardId) ?? null,
+    [activeCardId, boardTheme],
   );
+  const photoPlayed = slots.map((_, index) => {
+    const photoId =
+      boardMotion?.staticCards[index]?.id ||
+      photoScratchIdForSlot(activeCardId ?? "theme", index);
+    return isPlayed("photo", photoId);
+  });
   const collectedCount = photoPlayed.filter(Boolean).length;
   const photoCardLabel = useMemo(() => {
     const themeName = (theme?.name ?? "").trim();
@@ -422,11 +427,6 @@ function CreatorThemeScreenInner({
         : (themeProgressCard?.total ?? 0);
     return total > 0 ? Math.min(100, Math.round((owned / total) * 100)) : 0;
   }, [authed, board, resolvedThemeId, themeProgressCard]);
-  const boardMotion = useMemo(
-    () =>
-      boardTheme?.motionCards.find((card) => card.id === activeCardId) ?? null,
-    [activeCardId, boardTheme],
-  );
   /** Every photo CTA shows a price — fill gaps from siblings / pack unit. */
   const defaultPhotoPrice = useMemo(() => {
     for (const price of slotPrices) {
@@ -444,15 +444,21 @@ function CreatorThemeScreenInner({
     () => unlockedMotionFreePlayIds(boardTheme?.motionCards ?? [], freePlay),
     [boardTheme, freePlay],
   );
-  /** null until board loads — then Locked/Unlocked banners + Unlock CTA. */
+  /**
+   * Guests: no lock UI (auth sheet gates play).
+   * Signed-in: lock every motion until the board loads, then use board status.
+   */
   const lockedMotionIds = useMemo(() => {
-    if (!boardTheme) return null;
+    if (!authed) return null;
+    if (board === null) {
+      return new Set(motionCards.map((card) => card.id));
+    }
     const ids = new Set<string>();
-    for (const card of boardTheme.motionCards) {
+    for (const card of boardTheme?.motionCards ?? []) {
       if (card.status === "locked") ids.add(card.id);
     }
     return ids;
-  }, [boardTheme]);
+  }, [authed, board, boardTheme, motionCards]);
   const motionTheme = useMemo(
     () =>
       resolveMotionCardTheme(
@@ -460,11 +466,15 @@ function CreatorThemeScreenInner({
       ),
     [resolvedThemeId, theme?.name, themeId],
   );
+  const themePath = Paths.creatorTheme(creatorId, resolvedThemeId || themeId);
+  /** Free Play label only when this motion already has a free-playable row. */
+  const activeMotionFreePlay =
+    freePlay && Boolean(boardMotion?.freePlayable);
 
   function openBuyPacks() {
     navigate(Paths.creatorPacks(creatorId), {
       state: {
-        from: Paths.creatorTheme(creatorId, resolvedThemeId || themeId),
+        from: themePath,
       },
     });
   }
@@ -483,12 +493,23 @@ function CreatorThemeScreenInner({
     if (!card) return;
     const playModelId = card.modelId?.trim() || modelId || "";
     if (!playModelId) return;
-    // Toggle on → free-play path for every motion CTA (label matches).
-    const useFreePlay = freePlay;
+    if (!authed) {
+      requireAuth({ type: "resume", path: themePath });
+      return;
+    }
+    const boardCard = boardTheme?.motionCards.find(
+      (entry) => entry.id === item.id,
+    );
+    const useFreePlay = freePlay && Boolean(boardCard?.freePlayable);
     setBuying(true);
-    const ok = await registerPlay("motion", card.id, useFreePlay);
+    const outcome = await registerPlay(
+      "motion",
+      card.id,
+      "offer",
+      useFreePlay,
+    );
     setBuying(false);
-    if (!ok) return;
+    if (outcome !== "ok") return;
     navigate(
       Paths.gamePlay(playModelId, card.id, {
         creatorId,
@@ -501,22 +522,25 @@ function CreatorThemeScreenInner({
 
   async function openPhoto(slotIndex: number) {
     if (buying || !activeCardId) return;
-    const playModelId = activeCard?.modelId?.trim() || modelId || "";
-    const photoId =
-      boardMotion?.staticCards[slotIndex]?.id ||
-      photoScratchIdForSlot(activeCardId, slotIndex);
     const boardSlot = boardMotion?.staticCards[slotIndex];
-    const photoUnlocked = Boolean(
-      boardSlot?.owned || boardSlot?.unlocked || photoPlayed[slotIndex],
-    );
-    // Free Play only after the photo has been purchased once.
-    const useFreePlay = freePlay && photoUnlocked;
+    if (!boardSlot) return;
+    const playModelId = activeCard?.modelId?.trim() || modelId || "";
+    if (!authed) {
+      requireAuth({ type: "resume", path: themePath });
+      return;
+    }
+    const useFreePlay = freePlay && Boolean(boardSlot.freePlayable);
     setBuying(true);
-    const ok = await registerPlay("photo", photoId, useFreePlay);
+    const outcome = await registerPlay(
+      "photo",
+      boardSlot.id,
+      "offer",
+      useFreePlay,
+    );
     setBuying(false);
-    if (!ok) return;
+    if (outcome !== "ok") return;
     navigate(
-      Paths.photoScratchPlay(photoId, {
+      Paths.photoScratchPlay(boardSlot.id, {
         modelId: playModelId || undefined,
         creatorId,
         themeId: resolvedThemeId || undefined,
@@ -696,7 +720,7 @@ function CreatorThemeScreenInner({
                 items={items}
                 selectedId={activeCardId}
                 slideCta="play"
-                freePlayMode={freePlay}
+                freePlayMode={activeMotionFreePlay}
                 ownedFreePlayIds={ownedFreePlayIds}
                 lockedMotionIds={lockedMotionIds}
                 motionTheme={motionTheme}
@@ -739,7 +763,6 @@ function CreatorThemeScreenInner({
             {slots.map((slot, index) => {
               const owned = photoPlayed[index];
               const boardSlot = boardMotion?.staticCards[index];
-              // Purchased once → Free Play eligible; otherwise keep diamond buy CTA.
               const photoUnlocked = Boolean(
                 boardSlot?.owned || boardSlot?.unlocked || owned,
               );
@@ -755,7 +778,8 @@ function CreatorThemeScreenInner({
                   ? Math.round(boardPrice)
                   : null) ??
                 defaultPhotoPrice;
-              const useFreePlay = freePlay && photoUnlocked;
+              const useFreePlay =
+                freePlay && Boolean(boardSlot?.freePlayable);
               // Free Play on + locked → tuck CTA down (still mounted for exit anim).
               const tuckedAway = freePlay && !photoUnlocked;
               return (
@@ -770,7 +794,11 @@ function CreatorThemeScreenInner({
                         ? "is-unplayed"
                         : "is-locked",
                     // Clip while tucking; glow room when CTA is interactive.
-                    tuckedAway ? "is-tucking-cta" : "has-price-cta",
+                    boardSlot
+                      ? tuckedAway
+                        ? "is-tucking-cta"
+                        : "has-price-cta"
+                      : "",
                   ]
                     .filter(Boolean)
                     .join(" ")}
@@ -791,17 +819,19 @@ function CreatorThemeScreenInner({
                       status={photoUnlocked ? "unlocked" : "locked"}
                     />
                   </div>
-                  <McpPhotoPlayCta
-                    playPrice={playPrice}
-                    freePlay={useFreePlay}
-                    tuckedAway={tuckedAway}
-                    ariaLabel={
-                      useFreePlay
-                        ? `Free Play ${photoTitle} ${index + 1}`
-                        : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
-                    }
-                    onPlay={() => void openPhoto(index)}
-                  />
+                  {boardSlot ? (
+                    <McpPhotoPlayCta
+                      playPrice={playPrice}
+                      freePlay={useFreePlay}
+                      tuckedAway={tuckedAway}
+                      ariaLabel={
+                        useFreePlay
+                          ? `Free Play ${photoTitle} ${index + 1}`
+                          : `Play ${photoTitle} ${index + 1} for ${playPrice} diamonds`
+                      }
+                      onPlay={() => void openPhoto(index)}
+                    />
+                  ) : null}
                 </div>
               );
             })}

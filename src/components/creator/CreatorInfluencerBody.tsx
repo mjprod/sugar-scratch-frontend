@@ -658,25 +658,33 @@ function ThemeCollectionCard({
           // duplicateCount: demo fixture only — real copy count once the board sends one
           duplicateCount: demoLockedBanner && unlocked && index === 0 ? 3 : undefined,
           playCost: boardCard?.price ?? packUnitCost(),
-          // Free Play toggle on → "Free Play" label (locked cards hide the CTA).
-          freePlay,
+          freePlay:
+            freePlay &&
+            (demoLockedBanner || Boolean(boardCard?.freePlayable)),
           staticTotal: boardCard?.staticCardsTotal || 10,
           collectedIndexes,
           photos: photos.map((photo) => ({
             ...photo,
-            freePlay,
+            freePlay:
+              freePlay &&
+              (demoLockedBanner || Boolean(photo.freePlayable)),
             onPlay: () =>
               onPlayPhoto(
                 card.id,
                 photo.slotIndex ?? 0,
                 card.modelId ?? "",
-                freePlay,
+                freePlay &&
+                  (demoLockedBanner || Boolean(photo.freePlayable)),
                 photo.id,
               ),
           })),
           onPlay: () => {
             if (card.modelId) {
-              if (freePlay && onPlayGameFree) {
+              if (
+                freePlay &&
+                (demoLockedBanner || Boolean(boardCard?.freePlayable)) &&
+                onPlayGameFree
+              ) {
                 onPlayGameFree(card.modelId, card.id, card.name);
                 return;
               }
