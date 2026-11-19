@@ -382,7 +382,10 @@ async function main() {
   try {
     await apiDirect("GET", "/api/health/live");
   } catch (err) {
-    throw new Error(`API not reachable at ${API} (${err.message}). Start it with \`npm run dev:api\` in the repo root.`);
+    throw new Error(
+      `API not reachable at ${API} (${err.message}). Start it with \`npm run dev:api\` in the repo root.`,
+      { cause: err },
+    );
   }
 
   const player = await registerPlayer();
