@@ -122,6 +122,16 @@ function detailFromError(caught: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+const THANK_YOU_DELAY_MS = 1550;
+const MISSING_INVITE_MESSAGE =
+  "This page is missing an invite code. Open the link from your invitation.";
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 export function LpBuildJoin({
   submitted,
   onSubmitted,
@@ -137,7 +147,10 @@ export function LpBuildJoin({
   const firstId = useId();
   const lastId = useId();
   const emailId = useId();
+  const errorId = useId();
   const invite = useRef(readInviteQuery()).current;
+  const submissionRef = useRef(0);
+  const errorRef = useRef<HTMLParagraphElement | null>(null);
   const [handle, setHandle] = useState(invite.inviteeUsername);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -157,21 +170,30 @@ export function LpBuildJoin({
   }, [submitted]);
 
   useEffect(() => {
-    if (!tossed || submitted || busy) return;
-    const id = window.setTimeout(() => onSubmitted(), 1550);
-    return () => window.clearTimeout(id);
-  }, [busy, onSubmitted, submitted, tossed]);
+    const submissions = submissionRef;
+    return () => {
+      submissions.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!saveError) return;
+    errorRef.current?.focus();
+  }, [saveError]);
 
   async function submitForm() {
     if (!ready || tossed || busy) return;
     setSaveError("");
-    openDeferredLotties();
-    setTossed(true);
-
     if (!invite.inviteCode) {
+      setSaveError(MISSING_INVITE_MESSAGE);
       return;
     }
 
+    const submission = submissionRef.current + 1;
+    submissionRef.current = submission;
+    const started = performance.now();
+    openDeferredLotties();
+    setTossed(true);
     setBusy(true);
     try {
       await apiMutate<{ ok?: boolean }>("/api/promoter/pre-influencers/form", {
@@ -185,11 +207,16 @@ export function LpBuildJoin({
           social_handle: handle.trim(),
         }),
       });
+      const remaining = THANK_YOU_DELAY_MS - (performance.now() - started);
+      if (remaining > 0) await wait(remaining);
+      if (submissionRef.current !== submission) return;
+      onSubmitted();
     } catch (caught) {
+      if (submissionRef.current !== submission) return;
       setTossed(false);
       setSaveError(detailFromError(caught));
     } finally {
-      setBusy(false);
+      if (submissionRef.current === submission) setBusy(false);
     }
   }
 
@@ -204,6 +231,7 @@ export function LpBuildJoin({
           className={
             tossed ? "lp-build-page5-form is-exiting" : "lp-build-page5-form"
           }
+          aria-describedby={saveError ? errorId : undefined}
           onSubmit={(event) => {
             event.preventDefault();
             void submitForm();
@@ -266,7 +294,13 @@ export function LpBuildJoin({
             disabled={busy || tossed}
           />
           {saveError ? (
-            <p className="lp-build-page6-contact" role="alert">
+            <p
+              ref={errorRef}
+              id={errorId}
+              className="lp-build-page6-contact"
+              role="alert"
+              tabIndex={-1}
+            >
               {saveError}
             </p>
           ) : null}
