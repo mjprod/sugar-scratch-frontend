@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type InputHTMLAttributes } from "react";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
+import { apiMutate } from "@/lib/api";
 import { DeferredLottie, openDeferredLotties } from "@/lib/lottie/DeferredLottie";
 import { lottieRenderConfig } from "@/utils/lottieRender";
 
@@ -12,6 +13,7 @@ function Field({
   autoComplete,
   prefix,
   enterKeyHint,
+  disabled,
 }: {
   id: string;
   label: string;
@@ -21,6 +23,7 @@ function Field({
   autoComplete?: string;
   prefix?: string;
   enterKeyHint?: InputHTMLAttributes<HTMLInputElement>["enterKeyHint"];
+  disabled?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -59,6 +62,7 @@ function Field({
         value={value}
         autoComplete={autoComplete}
         enterKeyHint={enterKeyHint}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value.replace(/^@+/, ""))}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
@@ -97,6 +101,27 @@ function ThankYou({ onReset }: { onReset: () => void }) {
   );
 }
 
+function readInviteQuery(): {
+  inviteCode: string;
+  inviteeEmail: string;
+  inviteeUsername: string;
+} {
+  if (typeof window === "undefined") {
+    return { inviteCode: "", inviteeEmail: "", inviteeUsername: "" };
+  }
+  const params = new URLSearchParams(window.location.search);
+  return {
+    inviteCode: (params.get("inviteCode") || "").trim(),
+    inviteeEmail: (params.get("inviteeEmail") || "").trim(),
+    inviteeUsername: (params.get("inviteeUsername") || "").replace(/^@+/, "").trim(),
+  };
+}
+
+function detailFromError(caught: unknown): string {
+  if (caught instanceof Error && caught.message.trim()) return caught.message.trim();
+  return "Something went wrong. Please try again.";
+}
+
 export function LpBuildJoin({
   submitted,
   onSubmitted,
@@ -112,11 +137,14 @@ export function LpBuildJoin({
   const firstId = useId();
   const lastId = useId();
   const emailId = useId();
-  const [handle, setHandle] = useState("");
+  const invite = useRef(readInviteQuery()).current;
+  const [handle, setHandle] = useState(invite.inviteeUsername);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(invite.inviteeEmail);
   const [tossed, setTossed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [fieldFocused, setFieldFocused] = useState(false);
   const ready = handle && firstName && lastName && email;
   const enter = fieldFocused ? 1 : Math.min(1, Math.max(0, progress));
@@ -129,10 +157,41 @@ export function LpBuildJoin({
   }, [submitted]);
 
   useEffect(() => {
-    if (!tossed || submitted) return;
+    if (!tossed || submitted || busy) return;
     const id = window.setTimeout(() => onSubmitted(), 1550);
     return () => window.clearTimeout(id);
-  }, [onSubmitted, submitted, tossed]);
+  }, [busy, onSubmitted, submitted, tossed]);
+
+  async function submitForm() {
+    if (!ready || tossed || busy) return;
+    setSaveError("");
+    openDeferredLotties();
+    setTossed(true);
+
+    if (!invite.inviteCode) {
+      return;
+    }
+
+    setBusy(true);
+    try {
+      await apiMutate<{ ok?: boolean }>("/api/promoter/pre-influencers/form", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invite_code: invite.inviteCode,
+          email: email.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          social_handle: handle.trim(),
+        }),
+      });
+    } catch (caught) {
+      setTossed(false);
+      setSaveError(detailFromError(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="lp-build-join">
@@ -147,9 +206,7 @@ export function LpBuildJoin({
           }
           onSubmit={(event) => {
             event.preventDefault();
-            if (!ready || tossed) return;
-            openDeferredLotties();
-            setTossed(true);
+            void submitForm();
           }}
         >
           <div
@@ -176,6 +233,7 @@ export function LpBuildJoin({
             onChange={setHandle}
             autoComplete="username"
             enterKeyHint="next"
+            disabled={busy || tossed}
           />
           <div className="lp-build-page5-name-row">
             <Field
@@ -185,6 +243,7 @@ export function LpBuildJoin({
               onChange={setFirstName}
               autoComplete="given-name"
               enterKeyHint="next"
+              disabled={busy || tossed}
             />
             <Field
               id={lastId}
@@ -193,6 +252,7 @@ export function LpBuildJoin({
               onChange={setLastName}
               autoComplete="family-name"
               enterKeyHint="next"
+              disabled={busy || tossed}
             />
           </div>
           <Field
@@ -203,16 +263,22 @@ export function LpBuildJoin({
             onChange={setEmail}
             autoComplete="email"
             enterKeyHint="done"
+            disabled={busy || tossed}
           />
+          {saveError ? (
+            <p className="lp-build-page6-contact" role="alert">
+              {saveError}
+            </p>
+          ) : null}
           <div className="lp-build-page5-cta">
             <CtaButton
               {...ctaButtonPropsFromTemplate("squircleCTA")}
               fillParent
-              label="Submit"
+              label={busy ? "Submitting…" : "Submit"}
               costAmount={null}
               type="submit"
               fontSize={14}
-              disabled={!ready || tossed}
+              disabled={!ready || tossed || busy}
             />
           </div>
           </div>
