@@ -233,10 +233,14 @@ export function MotionCardHolder({
                 collectedIndexes={item.collectedIndexes}
                 duplicateCount={item.duplicateCount}
                 hideMeter={selected && detailsReady}
-                onBuy={() => {
-                  closeActive(item);
-                  window.requestAnimationFrame(() => item.onBuy?.());
-                }}
+                onBuy={
+                  item.onBuy
+                    ? () => {
+                        closeActive(item);
+                        window.requestAnimationFrame(() => item.onBuy?.());
+                      }
+                    : undefined
+                }
                 onSelect={() => {
                   if (detailsTimer.current != null) {
                     window.clearTimeout(detailsTimer.current);

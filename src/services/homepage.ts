@@ -31,6 +31,7 @@ import {
   fetchCards,
   type BackendCard,
 } from "../shared/backend/collection";
+import { isDiscoverableInfluencer } from "./influencerStatus";
 import { loadPackCatalog, packUnitCost } from "./purchase";
 import { listOwnedPacks } from "./packInventory";
 
@@ -464,12 +465,15 @@ export function continueCollectingFromModels(
   ]);
   const nowSec = Date.now() / 1000;
 
-  const items = models.map((model, index) => {
+  const items = models.flatMap((model, index) => {
     const id = modelId(model, index);
     const name = modelDisplayName(model);
     const total = counts.get(id) ?? 0;
     const ledger = ledgerForModel(ledgerByKey, model, id, name);
     const collected = Math.max(0, ledger?.collected ?? 0);
+    // Ledger card count, not an unopened pack. A deprecated influencer with
+    // nothing collected yet drops off this strip; her sealed packs stay in inventory.
+    if (!isDiscoverableInfluencer(model) && collected === 0) return [];
     const capped =
       total > 0 ? Math.min(total, collected) : collected;
     const resolvedTotal = total > 0 ? total : capped;
@@ -479,15 +483,17 @@ export function continueCollectingFromModels(
     const avatarUrl = avatarRaw
       ? normalizeMediaUrl(avatarRaw)
       : CREATOR_PHOTOS.emma.avatar;
-    return {
-      creatorId: id,
-      creatorName: name,
-      avatarUrl,
-      collected: capped,
-      total: resolvedTotal,
-      percent,
-      isNew: isNewModel(model, nowSec),
-    } satisfies ContinueCollectingItem;
+    return [
+      {
+        creatorId: id,
+        creatorName: name,
+        avatarUrl,
+        collected: capped,
+        total: resolvedTotal,
+        percent,
+        isNew: isNewModel(model, nowSec),
+      } satisfies ContinueCollectingItem,
+    ];
   });
 
   return items.sort((a, b) => {
@@ -544,6 +550,7 @@ export function leaderboardFromModels(
   const rows: LeaderboardRow[] = [];
 
   for (const model of models) {
+    if (!isDiscoverableInfluencer(model)) continue;
     const profile = profileFromModel(model);
     const creatorName = profile.name;
     const avatarRaw = model.avatar?.trim() ?? "";
@@ -617,6 +624,7 @@ export function packLibraryFromModels(
   const motionCounts = cardCountsByModel(cards);
 
   for (const model of models) {
+    if (!isDiscoverableInfluencer(model)) continue;
     const profile = profileFromModel(model);
     const creatorName = profile.name;
     const avatarRaw = model.avatar?.trim() ?? "";

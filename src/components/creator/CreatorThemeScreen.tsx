@@ -448,6 +448,13 @@ function CreatorThemeScreenInner({
    * Guests: no lock UI (auth sheet gates play).
    * Signed-in: lock every motion until the board loads, then use board status.
    */
+  const notForSaleMotionIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const card of boardTheme?.motionCards ?? []) {
+      if (card.forSale === false) ids.add(card.id);
+    }
+    return ids;
+  }, [boardTheme]);
   const lockedMotionIds = useMemo(() => {
     if (!authed) return null;
     if (board === null) {
@@ -486,6 +493,8 @@ function CreatorThemeScreenInner({
   async function openMotion(item: Iteration) {
     if (buying) return;
     if (lockedMotionIds?.has(item.id)) {
+      const lockedCard = boardTheme?.motionCards.find((entry) => entry.id === item.id);
+      if (lockedCard?.forSale === false) return;
       openBuyPacks();
       return;
     }
@@ -524,6 +533,7 @@ function CreatorThemeScreenInner({
     if (buying || !activeCardId) return;
     const boardSlot = boardMotion?.staticCards[slotIndex];
     if (!boardSlot) return;
+    if (!boardSlot.unlocked && boardSlot.forSale === false) return;
     const playModelId = activeCard?.modelId?.trim() || modelId || "";
     if (!authed) {
       requireAuth({ type: "resume", path: themePath });
@@ -700,6 +710,7 @@ function CreatorThemeScreenInner({
                 className="cpv2-theme-free-play-spacer"
                 aria-hidden="true"
               />
+              {board && !board.pack ? null : (
               <div className="cpv2-theme-motion-buy">
                 <CtaButton
                   forceCss
@@ -714,6 +725,7 @@ function CreatorThemeScreenInner({
                   onClick={openBuyPacks}
                 />
               </div>
+              )}
             </div>
             {items.length > 0 ? (
               <MobileCssCarousel
@@ -723,6 +735,7 @@ function CreatorThemeScreenInner({
                 freePlayMode={activeMotionFreePlay}
                 ownedFreePlayIds={ownedFreePlayIds}
                 lockedMotionIds={lockedMotionIds}
+                notForSaleMotionIds={notForSaleMotionIds}
                 motionTheme={motionTheme}
                 onUnlock={() => openBuyPacks()}
                 onView={(item) => void openMotion(item)}
@@ -766,6 +779,7 @@ function CreatorThemeScreenInner({
               const photoUnlocked = Boolean(
                 boardSlot?.owned || boardSlot?.unlocked || owned,
               );
+              const photoForSale = !boardSlot || boardSlot.forSale !== false;
               const src =
                 slot.src ||
                 (activeCard ? motionTileStillUrl(activeCard) : "") ||
@@ -794,7 +808,7 @@ function CreatorThemeScreenInner({
                         ? "is-unplayed"
                         : "is-locked",
                     // Clip while tucking; glow room when CTA is interactive.
-                    boardSlot
+                    boardSlot && (photoUnlocked || photoForSale)
                       ? tuckedAway
                         ? "is-tucking-cta"
                         : "has-price-cta"
@@ -819,7 +833,7 @@ function CreatorThemeScreenInner({
                       status={photoUnlocked ? "unlocked" : "locked"}
                     />
                   </div>
-                  {boardSlot ? (
+                  {boardSlot && (photoUnlocked || photoForSale) ? (
                     <McpPhotoPlayCta
                       playPrice={playPrice}
                       freePlay={useFreePlay}

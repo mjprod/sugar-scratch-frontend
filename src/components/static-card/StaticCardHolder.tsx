@@ -14,6 +14,8 @@ type StaticCardHolderProps = {
   topLayerUrl?: string;
   playCost?: number;
   freePlay?: boolean;
+  /** False omits the play button. Defaults to showing it. */
+  offerPlay?: boolean;
   onPlay?: () => void;
   className?: string;
   /** Overlay grid: CSS plate instead of a live aurora shader. */
@@ -62,6 +64,7 @@ export function StaticCardHolder({
   topLayerUrl,
   playCost = packUnitCost(),
   freePlay = false,
+  offerPlay = true,
   onPlay,
   className,
   plainCta = false,
@@ -146,6 +149,7 @@ export function StaticCardHolder({
           </>
         ) : null}
 
+      {offerPlay ? (
       <div
         className={freePlay ? "static-card-play-cta is-free" : "static-card-play-cta"}
         ref={ctaRef}
@@ -198,6 +202,7 @@ export function StaticCardHolder({
           />
         ) : null}
       </div>
+      ) : null}
       </div>
     </div>
   );

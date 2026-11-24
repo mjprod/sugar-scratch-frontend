@@ -114,6 +114,7 @@ function photoItemsForCard(
     const slot = motion?.staticCards[index];
     const src = url.trim();
     const owned = demo ? index < filled : slot ? slot.owned || slot.unlocked : index < filled;
+    const forSale = slot ? slot.forSale !== false : motion ? motion.forSale !== false : true;
     return {
       id: slot?.id || `${card.id}-photo-${index}`,
       state: owned ? "unlocked" : "locked",
@@ -122,6 +123,8 @@ function photoItemsForCard(
       playCost: slot?.price ?? packUnitCost(),
       slotIndex: index,
       freePlayable: Boolean(slot?.freePlayable),
+      // Owned cards still replay. A locked card with forSale false has no play button.
+      offerPlay: owned || forSale,
     } satisfies StaticCarouselItem;
   });
 }
@@ -490,7 +493,7 @@ export function CreatorInfluencerBody({
           className={demo ? "cpv2-ultra-locked is-unlocked" : "cpv2-ultra-locked"}
           disabled={!demo}
         >
-          {demo ? null : (
+          {demo || board?.ultra?.forSale === false ? null : (
             <span className="cpv2-ultra-locked-price" aria-hidden="true">
               <DiamondLottie size={11} aria-hidden />
               {board?.ultra?.price ?? 50}
@@ -679,6 +682,13 @@ function ThemeCollectionCard({
               ),
           })),
           onPlay: () => {
+            if (
+              boardCard &&
+              boardCard.status !== "unlocked" &&
+              boardCard.forSale === false
+            ) {
+              return;
+            }
             if (card.modelId) {
               if (
                 freePlay &&
@@ -693,7 +703,10 @@ function ThemeCollectionCard({
             }
             onOpenCard(card.id);
           },
-          onBuy: () => {
+          onBuy:
+            boardCard?.forSale === false
+              ? undefined
+              : () => {
             const target = document.getElementById("creator-pack-offers");
             const scroller = target?.closest<HTMLElement>("[data-page-scroll]");
             if (!target || !scroller) return;
@@ -938,10 +951,12 @@ function ThemeCollectionCard({
             </p>
             <div className="cpv2-premium-actions">
               <button type="button" className="cpv2-premium-locked" disabled>
+                {boardTheme?.premium?.forSale === false ? null : (
                 <span className="cpv2-premium-locked-price" aria-hidden="true">
                   <DiamondLottie size={11} aria-hidden />
                   50
                 </span>
+                )}
                 <span className="cpv2-premium-locked-label">Locked</span>
               </button>
               <span className="cpv2-premium-win">

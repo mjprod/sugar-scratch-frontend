@@ -14,6 +14,8 @@ export type BoardStaticCard = {
   owned: boolean;
   unlocked: boolean;
   freePlayable: boolean;
+  /** False when the influencer has left the store. Missing means still for sale. */
+  forSale: boolean;
 };
 
 export type BoardMotionCard = {
@@ -21,6 +23,8 @@ export type BoardMotionCard = {
   price: number;
   status: BoardCardStatus;
   freePlayable: boolean;
+  /** False when a first play would be rejected. Unlocked cards still replay. */
+  forSale: boolean;
   staticCardsOwned: number;
   staticCardsTotal: number;
   staticCards: BoardStaticCard[];
@@ -46,6 +50,8 @@ export type BoardPremiumCard = {
   maxWin: number;
   unlocked: boolean;
   freePlayable: boolean;
+  /** False when a first play would be rejected. Unlocked cards still replay. */
+  forSale: boolean;
 };
 
 export type CreatorBoard = {
@@ -95,6 +101,7 @@ function parseStatic(raw: unknown): BoardStaticCard | null {
     owned: Boolean(card.owned),
     unlocked: Boolean(card.unlocked),
     freePlayable: Boolean(card.freePlayable),
+    forSale: card.forSale !== false,
   };
 }
 
@@ -108,6 +115,7 @@ function parseMotion(raw: unknown): BoardMotionCard | null {
     price: num(card.price),
     status: card.status === "unlocked" ? "unlocked" : "locked",
     freePlayable: Boolean(card.freePlayable),
+    forSale: card.forSale !== false,
     staticCardsOwned: num(card.staticCardsOwned),
     staticCardsTotal: Math.max(0, num(card.staticCardsTotal)),
     staticCards: Array.isArray(card.staticCards)
@@ -131,6 +139,7 @@ function parsePremium(raw: unknown): BoardPremiumCard | null {
     maxWin: num(card.maxWin),
     unlocked: Boolean(card.unlocked),
     freePlayable: Boolean(card.freePlayable),
+    forSale: card.forSale !== false,
   };
 }
 

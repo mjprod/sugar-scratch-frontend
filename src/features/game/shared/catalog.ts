@@ -37,7 +37,10 @@ export type CatalogPhotoCard = {
   cardPrice?: number;
 };
 
-type ApiPhotoCard = Omit<CatalogPhotoCard, "cardPrice"> & { card_price?: unknown };
+type ApiPhotoCard = Omit<CatalogPhotoCard, "cardPrice"> & {
+  card_price?: unknown;
+  status?: unknown;
+};
 
 type ApiMotionCard = {
   id?: unknown;
@@ -53,6 +56,7 @@ type ApiMotionCard = {
   theme_id?: unknown;
   sort_order?: unknown;
   photos?: unknown;
+  status?: unknown;
 };
 
 type CardsPayload = { cards?: ApiMotionCard[] };
@@ -137,6 +141,8 @@ function parseMotionPayload(data: CardsPayload): CatalogMotionCard[] {
   if (!Array.isArray(data.cards)) return [];
   const cards: CatalogMotionCard[] = [];
   for (const entry of data.cards) {
+    // Mirror /api/cards player filter when the static index.json is used as fallback.
+    if (entry.status === "unpublished") continue;
     const card = motionFromRow(entry);
     if (card) cards.push(card);
   }
@@ -147,6 +153,7 @@ function parsePhotoPayload(data: PhotoPayload): CatalogPhotoCard[] {
   if (!Array.isArray(data.cards)) return [];
   const cards: CatalogPhotoCard[] = [];
   for (const entry of data.cards) {
+    if (entry.status === "unpublished") continue;
     if (
       typeof entry.id !== "string" ||
       typeof entry.label !== "string" ||

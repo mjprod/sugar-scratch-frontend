@@ -7,6 +7,7 @@ import {
 } from "@/shared/catalog/characters";
 import type { SwipeCardData } from "@/features/swipe/constants/cards";
 import { type BackendModel } from "./collection";
+import { isDiscoverableInfluencer } from "@/services/influencerStatus";
 import { normalizeMediaUrl } from "@/lib/mediaUrl";
 
 function optionalApiString(value: unknown): string | null {
@@ -38,9 +39,10 @@ export function modelDisplayName(model: BackendModel): string {
 export function createSwipeDeckFromModels(
   models: readonly BackendModel[],
 ): SwipeCardData[] {
-  if (!models.length) return [];
+  const discoverable = models.filter((model) => isDiscoverableInfluencer(model));
+  if (!discoverable.length) return [];
 
-  const ordered = [...models].sort((a, b) => {
+  const ordered = [...discoverable].sort((a, b) => {
     const aCreated =
       typeof a.created_at === "number" && Number.isFinite(a.created_at)
         ? a.created_at

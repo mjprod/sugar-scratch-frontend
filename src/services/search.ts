@@ -8,6 +8,7 @@ import {
   packLibraryFromModels,
   type FeaturedPack,
 } from "./homepage";
+import { isDiscoverableInfluencer } from "./influencerStatus";
 import {
   loadModels,
   modelDisplayName,
@@ -65,7 +66,7 @@ function usernameFromCreator(id: string, name: string) {
 }
 
 function creatorsFromModels(models: BackendModel[]): SearchCreator[] {
-  return models.map((model, index) => {
+  return models.filter((model) => isDiscoverableInfluencer(model)).map((model, index) => {
     const id = modelId(model, index);
     const name = modelDisplayName(model);
     const avatarRaw = model.avatar?.trim() ?? "";

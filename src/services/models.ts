@@ -39,6 +39,8 @@ export type BackendModel = {
   profileDress2xUrl?: string | null;
   theme_avatars?: Record<string, string> | null;
   tags?: string[];
+  /** published: for sale. unpublished: hidden. deprecated: buyers keep owned cards. */
+  status?: "published" | "unpublished" | "deprecated" | null;
 };
 
 export type FoilSlot = 1 | 2;

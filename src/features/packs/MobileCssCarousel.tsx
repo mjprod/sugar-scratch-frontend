@@ -136,6 +136,7 @@ function PackSlideHud({
   slideCta = "buy",
   freePlayMode = false,
   lockStatus = null,
+  notForSale = false,
   onToggleBuyConfirm,
   onCloseBuyConfirm,
   onConfirmBuy,
@@ -158,6 +159,8 @@ function PackSlideHud({
   freePlayMode?: boolean;
   /** Board lock for this motion; null skips banner + Unlock. */
   lockStatus?: "locked" | "unlocked" | null;
+  /** Locked, and a first play is no longer sold. Hide Unlock; do not show a price. */
+  notForSale?: boolean;
   onToggleBuyConfirm: () => void;
   onCloseBuyConfirm: () => void;
   onConfirmBuy: (quantity: number) => void;
@@ -235,7 +238,7 @@ function PackSlideHud({
         }}
       >
         <div className="coverflow-buy-pack-cta__primary">
-          {slideCta === "play" && locked ? (
+          {slideCta === "play" && locked && notForSale ? null : slideCta === "play" && locked ? (
             <div className="coverflow-compact-play-cta">
               <CtaButton
                 {...ctaButtonPropsFromTemplate("squircleCTA")}
@@ -680,6 +683,7 @@ export function MobileCssCarousel({
   freePlayMode = false,
   ownedFreePlayIds = null,
   lockedMotionIds = null,
+  notForSaleMotionIds = null,
   motionTheme = "police",
   onUnlock,
 }: {
@@ -725,6 +729,8 @@ export function MobileCssCarousel({
    * Ids in the set render Locked + Unlock; others get Unlocked.
    */
   lockedMotionIds?: ReadonlySet<string> | null;
+  /** Locked motions that are not a first-play purchase. Unlock stays hidden. */
+  notForSaleMotionIds?: ReadonlySet<string> | null;
   /** Theme tease copy/tint for locked slides (nurse → HANDLE WITH CARE, …). */
   motionTheme?: MotionCardTheme;
   /** Locked motion Unlock CTA — usually Buy Packs. */
@@ -1923,6 +1929,7 @@ export function MobileCssCarousel({
                     : "unlocked"
                   : null
               }
+              notForSale={notForSaleMotionIds?.has(items[activeIndex].id) ?? false}
               onToggleBuyConfirm={toggleBuyConfirm}
               onCloseBuyConfirm={closeBuyConfirm}
               onConfirmBuy={confirmActiveBuy}
