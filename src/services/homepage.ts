@@ -31,7 +31,10 @@ import {
   fetchCards,
   type BackendCard,
 } from "../shared/backend/collection";
-import { isDiscoverableInfluencer } from "./influencerStatus";
+import {
+  influencerStatus,
+  isDiscoverableInfluencer,
+} from "./influencerStatus";
 import { loadPackCatalog, packUnitCost } from "./purchase";
 import { listOwnedPacks } from "./packInventory";
 
@@ -471,9 +474,11 @@ export function continueCollectingFromModels(
     const total = counts.get(id) ?? 0;
     const ledger = ledgerForModel(ledgerByKey, model, id, name);
     const collected = Math.max(0, ledger?.collected ?? 0);
-    // Ledger card count, not an unopened pack. A deprecated influencer with
-    // nothing collected yet drops off this strip; her sealed packs stay in inventory.
-    if (!isDiscoverableInfluencer(model) && collected === 0) return [];
+    const status = influencerStatus(model);
+    // Unpublished is gone from home entirely. Deprecated stays only when the
+    // player already has ledger progress (sealed packs stay in inventory).
+    if (status === "unpublished") return [];
+    if (status === "deprecated" && collected === 0) return [];
     const capped =
       total > 0 ? Math.min(total, collected) : collected;
     const resolvedTotal = total > 0 ? total : capped;

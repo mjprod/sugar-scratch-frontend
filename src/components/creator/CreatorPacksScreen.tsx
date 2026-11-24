@@ -7,6 +7,7 @@ import { type BackendModel } from "@/shared/backend/collection";
 import { modelDisplayName } from "@/shared/backend/modelProfile";
 import { resolveModelIdForCreator } from "@/features/collection/lib/resolveCreatorModel";
 import { navigateBackOr } from "@/hooks/useGoBack";
+import { isDiscoverableInfluencer } from "@/services/influencerStatus";
 import { loadPackCatalog, type PurchaseFlowPack } from "@/services/purchase";
 import { useMarkPageReady } from "@/shared/ui/usePageReady";
 import "./creator-influencer.css";
@@ -108,6 +109,9 @@ function CreatorPacksScreenInner({
 
   useMarkPageReady(resolved && packsReady);
 
+  // Foil packs come from /api/models; departed creators must not sell here.
+  const packsForSale = !model || isDiscoverableInfluencer(model);
+
   const title = useMemo(
     () => `Buy ${creatorName} pack`,
     [creatorName],
@@ -150,17 +154,23 @@ function CreatorPacksScreenInner({
         </header>
 
         {resolved && packsReady ? (
-          <div className="cpv2-packs-coverflow">
-            <Suspense fallback={null}>
-              <FeaturedCoverFlow
-                featured={EMPTY_FEATURED}
-                creatorId={purchaseCreatorId}
-                onPlay={addCoverflowPackToPocket}
-                influencerBackdrop
-                forceDesktopCoverflow
-              />
-            </Suspense>
-          </div>
+          packsForSale ? (
+            <div className="cpv2-packs-coverflow">
+              <Suspense fallback={null}>
+                <FeaturedCoverFlow
+                  featured={EMPTY_FEATURED}
+                  creatorId={purchaseCreatorId}
+                  onPlay={addCoverflowPackToPocket}
+                  influencerBackdrop
+                  forceDesktopCoverflow
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <p className="cpv2-theme-page-empty" role="status">
+              Packs are no longer available for {creatorName}.
+            </p>
+          )
         ) : (
           <div className="cpv2-influencer" aria-busy="true">
             <span className="cpv2-skeleton-block cpv2-skeleton-coverflow" />

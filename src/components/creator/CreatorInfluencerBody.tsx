@@ -530,6 +530,8 @@ export function CreatorInfluencerBody({
         </div>
       </section>
 
+      {/* board.pack is null when the influencer left the store (deprecated). */}
+      {board && !board.pack ? null : (
       <section
         className="cpv2-pack-section cpv2-enter"
         style={{ "--cpv2-enter-i": 2 + themes.length } as CSSProperties}
@@ -567,6 +569,7 @@ export function CreatorInfluencerBody({
           </button>
         </p>
       </section>
+      )}
 
       <HomeSiteFooter />
     </div>

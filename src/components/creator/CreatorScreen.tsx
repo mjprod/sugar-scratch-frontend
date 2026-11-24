@@ -29,6 +29,7 @@ import {
   unfollowCreator,
 } from "@/services/following";
 import { modelAvatarUrl } from "@/services/models";
+import { isDiscoverableInfluencer } from "@/services/influencerStatus";
 import { loadPackCatalog } from "@/services/purchase";
 import { trackScratchEvent } from "@/services/readyToScratch";
 import { resolveUnopenedOpenTarget } from "@/services/scratchResume";
@@ -404,6 +405,10 @@ function CreatorScreenInner({
           ) : null}
         </div>
 
+        {/* board.pack is null for departed creators; model status covers guests. */}
+        {model &&
+        isDiscoverableInfluencer(model) &&
+        (!board || board.pack) ? (
         <div
           className={[
             "cpv2-profile-buy-pack",
@@ -437,6 +442,7 @@ function CreatorScreenInner({
             />
           )}
         </div>
+        ) : null}
       </div>
 
       {toast ? <div className="cpv2-toast">{toast}</div> : null}
