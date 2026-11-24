@@ -127,6 +127,9 @@ export const Paths = {
   mobileCarousel: "/mobile-carousel",
   /** @deprecated Design is now the logged-in home at Paths.home. */
   homeVersion2: "/home-version2",
+  /** Operator packs dashboard (same path as the backend app). */
+  dashboardPacks: "/dashboard/packs",
+  dashboardLogin: "/dashboard/login",
 } as const;
 
 /** Tabs guests can open without auth (Store is browseable; purchase still gates). */

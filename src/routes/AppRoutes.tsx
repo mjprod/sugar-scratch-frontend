@@ -193,6 +193,16 @@ const LpBuildExperience = lazy(() =>
     default: m.LpBuildExperience,
   })),
 );
+const PacksDashboardPage = lazy(() =>
+  import("@/features/dashboard/PacksDashboardPage").then((m) => ({
+    default: m.PacksDashboardPage,
+  })),
+);
+const DashboardLoginPage = lazy(() =>
+  import("@/features/dashboard/DashboardLoginPage").then((m) => ({
+    default: m.DashboardLoginPage,
+  })),
+);
 
 
 function GameCatalogRoute({ children }: { children: ReactNode }) {
@@ -533,6 +543,9 @@ export function AppRoutes() {
               }
             />
           </Route>
+
+          <Route path={Paths.dashboardLogin} element={<DashboardLoginPage />} />
+          <Route path={Paths.dashboardPacks} element={<PacksDashboardPage />} />
 
           <Route path="*" element={<Navigate to={Paths.home} replace />} />
         </Routes>
