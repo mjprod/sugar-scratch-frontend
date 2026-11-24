@@ -338,7 +338,7 @@ export function MotionCard({
         </span>
       ) : null}
 
-      {locked ? (
+      {locked && onBuy ? (
         <m.div
           className="absolute right-[3px] bottom-[7px] left-[3px] z-10 h-[34px]"
           initial={false}

@@ -3,6 +3,7 @@
  * Activity/NEW flags are only stored when the product sets them; we never invent them.
  */
 import { getAuthUserId } from "./auth";
+import { isDiscoverableInfluencer } from "./influencerStatus";
 import { loadModels, type BackendModel } from "./models";
 import { normalizeMediaUrl } from "@/lib/mediaUrl";
 import { formatSocialHandle } from "@/shared/catalog/characters";
@@ -262,6 +263,7 @@ export async function hydrateFollowingFromModelsIfEmpty(): Promise<
     const now = Date.now();
     const seeded: FollowedCreator[] = [];
     for (let i = 0; i < models.length && seeded.length < 6; i++) {
+      if (!isDiscoverableInfluencer(models[i])) continue;
       const creator = followedCreatorFromModel(models[i]!, now - i * 86_400_000);
       if (creator) seeded.push(creator);
     }

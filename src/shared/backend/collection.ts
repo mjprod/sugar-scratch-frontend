@@ -78,6 +78,8 @@ export type BackendModel = {
   theme_avatars?: Record<string, string> | null
   /** Freeform labels for dashboard filtering. */
   tags?: string[]
+  /** published: for sale. unpublished: hidden. deprecated: buyers keep owned cards. */
+  status?: "published" | "unpublished" | "deprecated" | null
 }
 
 export type BackendCard = {
@@ -92,6 +94,8 @@ export type BackendCard = {
   trailer?: string | null
   trailerPoster?: string | null
   motionPoster?: string | null
+  /** published (default) or unpublished. API omits unpublished for players. */
+  status?: "published" | "unpublished" | null
 }
 
 /** One published motion card usable in the pack-open fan. */
@@ -520,6 +524,7 @@ function toCatalogModel(model: ServiceBackendModel): BackendModel | null {
     profileDress2xUrl: model.profileDress2xUrl ?? null,
     theme_avatars: model.theme_avatars,
     tags: model.tags,
+    status: model.status ?? null,
   }
 }
 
@@ -537,7 +542,10 @@ export async function fetchModels(): Promise<BackendModel[] | null> {
 export function fetchCards(): Promise<BackendCard[] | null> {
   return cachedRequest('/api/cards', CATALOG_TTL_MS, async () => {
     const data = await apiFetch<{ cards?: BackendCard[] }>('/api/cards')
-    return data && Array.isArray(data.cards) ? data.cards : null
+    if (!data || !Array.isArray(data.cards)) return null
+    // Server already drops unpublished for players. Local guard for a stale
+    // 60s catalog cache that still carries a card after an operator unpublish.
+    return data.cards.filter((card) => card.status !== 'unpublished')
   })
 }
 

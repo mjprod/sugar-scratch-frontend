@@ -11,6 +11,7 @@ import {
   type BackendModel,
 } from "./models";
 import { isFeedFavourite } from "./feedFavourites";
+import { isDiscoverableInfluencer } from "./influencerStatus";
 import { loadPackCatalog, packUnitCost } from "./purchase";
 
 export type HomeFeedCreator = {
@@ -194,7 +195,9 @@ export async function fetchHomeFeedPage(
       ([loaded]) => loaded,
     );
     // Keep source order — do not randomize; randomization made the reel feel jumpy.
-    feedCatalog = uniqueFeedItems(models.map(feedItemFromModel));
+    feedCatalog = uniqueFeedItems(
+      models.filter((model) => isDiscoverableInfluencer(model)).map(feedItemFromModel),
+    );
   }
   const catalog = feedCatalog;
   const start = cursor ? Number.parseInt(cursor, 10) : 0;

@@ -74,6 +74,31 @@ assert(board?.themes[0]?.motionCards.length === 1, "motion card without id dropp
 assert(board?.themes[0]?.motionCards[0]?.staticCardsTotal === 8, "static total kept");
 assert(board?.themes[0]?.motionCards[0]?.staticCards.length === 1, "blank static dropped");
 assert(board?.themes[0]?.premium?.replayPrice === 4, "premium replay price kept");
+assert(board?.themes[0]?.motionCards[0]?.forSale === true, "missing forSale stays purchasable");
+assert(board?.themes[0]?.premium?.forSale === true, "missing premium forSale stays purchasable");
+const retired = parseCreatorBoard({
+  creator: { id: "gone", name: "Gone" },
+  themes: [
+    {
+      id: "t",
+      label: "T",
+      motionCards: [
+        {
+          id: "m",
+          price: 10,
+          status: "locked",
+          forSale: false,
+          staticCards: [{ id: "p", price: 2, unlocked: false, forSale: false }],
+        },
+      ],
+    },
+  ],
+});
+assert(retired?.themes[0]?.motionCards[0]?.forSale === false, "retired motion is not for sale");
+assert(
+  retired?.themes[0]?.motionCards[0]?.staticCards[0]?.forSale === false,
+  "retired photo is not for sale",
+);
 assert(board?.ultra === null, "null ultra stays null");
 assert(parseCreatorBoard({ creator: { name: "no id" } }) === null, "board without creator id rejected");
 
@@ -90,15 +115,7 @@ assert(
   unlockedMotionFreePlayIds(
     [
       ...motionCards,
-      {
-        id: "locked-2",
-        price: 0,
-        status: "locked",
-        freePlayable: true,
-        staticCardsOwned: 0,
-        staticCardsTotal: 0,
-        staticCards: [],
-      },
+      { id: "locked-2", status: "locked" },
     ],
     true,
   )?.has("locked-2") !== true,

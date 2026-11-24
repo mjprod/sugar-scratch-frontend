@@ -102,6 +102,8 @@ function iterationsFromModels(models: BackendModel[]): CoverFlowCatalog {
     { id: string; name: string; creatorName: string; diamondCost: number }
   >();
 
+  // Does not call isDiscoverableInfluencer yet — unpublished/deprecated
+  // creators with packs can still appear here until this path is gated.
   for (const model of models) {
     const profile = profileFromModel(model);
     for (const foil of profile.packs) {

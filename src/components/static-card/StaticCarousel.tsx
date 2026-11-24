@@ -20,6 +20,8 @@ export type StaticCarouselItem = {
   playCost?: number;
   freePlay?: boolean;
   freePlayable?: boolean;
+  /** False hides the play button. Locked cards of a departed influencer stay visible. */
+  offerPlay?: boolean;
   slotIndex?: number;
   onPlay?: () => void;
 };
@@ -182,6 +184,7 @@ function PhotoCardStrip({
             topLayerUrl={item.topLayerUrl}
             playCost={item.playCost}
             freePlay={item.freePlay}
+            offerPlay={item.offerPlay}
             onPlay={item.onPlay}
           />
         </m.div>
@@ -441,6 +444,7 @@ export function StaticCarousel({
                           topLayerUrl={item.topLayerUrl}
                           playCost={item.playCost}
                           freePlay={item.freePlay}
+                          offerPlay={item.offerPlay}
                           onPlay={item.onPlay}
                           plainCta
                         />
