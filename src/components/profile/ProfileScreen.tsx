@@ -190,6 +190,12 @@ export function UserDashboardScreen({
       : tiltActive
         ? "Disable phone tilt"
         : "Enable phone tilt";
+  const tiltHint = !motionSupported
+    ? "Tilt needs a phone that reports how it is tipped."
+    : motionPermission === "denied"
+      ? "Tilt needs motion access. Allow Motion and Orientation for this site in your browser settings, then turn Tilt on again."
+      : "Tilt moves packs and cards when you tip your phone.";
+  const hdHint = "HD plays sharper card video and uses more data.";
 
   const handle = (username || name || "collector")
     .replace(/^@/, "")
@@ -351,6 +357,7 @@ export function UserDashboardScreen({
               role="switch"
               aria-label={tiltLabel}
               title={tiltLabel}
+              aria-describedby="profile-control-hint"
               aria-checked={tiltActive}
               disabled={!motionSupported}
               onClick={() => {
@@ -371,9 +378,10 @@ export function UserDashboardScreen({
 	            <button
 	              type="button"
 	              role="switch"
-	              aria-label={hdVideo ? "Disable HD videos" : "Enable HD videos"}
-	              title={hdVideo ? "Disable HD videos" : "Enable HD videos"}
-	              aria-checked={hdVideo}
+              aria-label={hdVideo ? "Disable HD videos" : "Enable HD videos"}
+              title={hdVideo ? "Disable HD videos" : "Enable HD videos"}
+              aria-describedby="profile-control-hint"
+              aria-checked={hdVideo}
 	              onClick={() => {
 	                const next = !hdVideo;
 	                setHdVideoEnabled(next);
@@ -394,6 +402,9 @@ export function UserDashboardScreen({
 		            </button>
           </div>
         </div>
+        <p id="profile-control-hint" className="profile-hero-hint">
+          {tiltHint} {hdHint}
+        </p>
 	      </div>
 	
 	      {hdWarning ? (

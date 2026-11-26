@@ -73,6 +73,7 @@ import {
   type AuthSessionContextValue,
   type SecondarySurfaceId,
 } from "@/contexts/useAuth";
+import { leaveSettingsPathForOpenVerify } from "@/contexts/authVerifyNavigation";
 
 const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
   email: "",
@@ -191,6 +192,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   /** True only when verify opened right after Create Account (back → recreate). */
   const [verifyFromRegister, setVerifyFromRegister] = useState(false);
+  /** False when register created the account but the code email did not send. */
+  const [verifyEmailSent, setVerifyEmailSent] = useState(true);
   const [verifyPending, setVerifyPending] = useState<ProtectedAction | null>(
     null,
   );
@@ -514,6 +517,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
           setVerifyFromRegister(false);
+          setVerifyEmailSent(true);
           setVerifyPending(action);
           setVerifyOpen(true);
           return false;
@@ -678,10 +682,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 (action != null && actionNeedsVerifiedEmail(action)));
             if (needsVerify) {
               setVerifyFromRegister(openedFromRegister);
+              setVerifyEmailSent(result.verificationEmailSent !== false);
               setVerifyPending(action);
               setVerifyOpen(true);
+              // Stay in AppLayout while the code sheet is open. /recommend
+              // unmounts VerifyEmailModal. Discover is safe if signup started
+              // on Settings; post-verify routing still runs after the sheet.
+              const leaveSettings = leaveSettingsPathForOpenVerify(
+                openedFromRegister,
+                typeof window !== "undefined" ? window.location.pathname : "",
+              );
+              if (leaveSettings) memoryNavigate(leaveSettings);
               return;
             }
+            setVerifyEmailSent(true);
             applyRecommendationDecision(action);
           }, 0);
         }
@@ -924,6 +938,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emailVerified,
       verifyOpen,
       verifyFromRegister,
+      verifyEmailSent,
       resumeLikeId,
       navNotice,
       purchasedPacks,
@@ -1011,6 +1026,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPendingAfterRecFromSwipe,
       verifyOpen,
       verifyFromRegister,
+      verifyEmailSent,
     ],
   );
 

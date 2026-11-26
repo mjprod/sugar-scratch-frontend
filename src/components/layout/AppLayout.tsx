@@ -115,6 +115,7 @@ export function AppLayout() {
     onVerified,
     onVerifyBack,
     verifyFromRegister,
+    verifyEmailSent,
     verifyEmail,
     setInboxUnread,
     invalidateRemoteSession,
@@ -414,6 +415,7 @@ export function AppLayout() {
               open={verifyOpen}
               email={verifyEmail}
               fromRegister={verifyFromRegister}
+              emailSent={verifyEmailSent}
               onBack={onVerifyBack}
               onVerified={onVerified}
             />
