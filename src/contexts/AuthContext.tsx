@@ -73,6 +73,7 @@ import {
   type AuthSessionContextValue,
   type SecondarySurfaceId,
 } from "@/contexts/useAuth";
+import { leaveSettingsPathForOpenVerify } from "@/contexts/authVerifyNavigation";
 
 const initialProfile: Omit<OnboardingData, "coins" | "diamonds"> = {
   email: "",
@@ -101,25 +102,6 @@ function isHighIntentForDefer(action: ProtectedAction) {
     action.type === "store" ||
     (action.type === "tab" && action.tab === "feed")
   );
-}
-
-function isSettingsPath(pathname: string) {
-  const path = pathname.split(/[?#]/)[0] ?? "";
-  return (
-    path === Paths.settings ||
-    path.startsWith(`${Paths.settings}/`) ||
-    path === "/profile" ||
-    path.startsWith("/profile/")
-  );
-}
-
-/** A new account should not finish signup on the Settings hub. */
-function shouldLeaveSettingsAfterRegister(action: ProtectedAction | null) {
-  if (typeof window !== "undefined" && isSettingsPath(window.location.pathname)) {
-    return true;
-  }
-  if (!action) return true;
-  return isProfileOnboardingResume(action);
 }
 
 /** Profile soft-gates must not resume after first-run onboarding (Discover instead). */
@@ -703,14 +685,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setVerifyEmailSent(result.verificationEmailSent !== false);
               setVerifyPending(action);
               setVerifyOpen(true);
-              // The code sheet used to leave people on whatever page they
-              // opened signup from, including Settings.
-              if (
-                openedFromRegister &&
-                shouldLeaveSettingsAfterRegister(action)
-              ) {
-                applyRecommendationDecision(null);
-              }
+              // Stay in AppLayout while the code sheet is open. /recommend
+              // unmounts VerifyEmailModal. Discover is safe if signup started
+              // on Settings; post-verify routing still runs after the sheet.
+              const leaveSettings = leaveSettingsPathForOpenVerify(
+                openedFromRegister,
+                typeof window !== "undefined" ? window.location.pathname : "",
+              );
+              if (leaveSettings) memoryNavigate(leaveSettings);
               return;
             }
             setVerifyEmailSent(true);

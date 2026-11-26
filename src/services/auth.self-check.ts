@@ -4,6 +4,11 @@
  */
 import { ApiError } from "../lib/api";
 import {
+  leaveSettingsPathForOpenVerify,
+  routeUnmountsVerifySheet,
+} from "../contexts/authVerifyNavigation";
+import { Paths } from "../routes/Paths";
+import {
   authFailureMessage,
   createAccountFailureMessage,
   duplicateEmailMessage,
@@ -84,5 +89,50 @@ assert(
   supportingCopyForTrigger("follow-creator").includes("follow"),
   "follow supporting copy",
 );
+
+assert(
+  leaveSettingsPathForOpenVerify(true, Paths.home) === null,
+  "guest home signup stays put so verify sheet remains mounted",
+);
+assert(
+  leaveSettingsPathForOpenVerify(true, Paths.discover) === null,
+  "discover signup stays put during verify",
+);
+assert(
+  leaveSettingsPathForOpenVerify(true, Paths.settings) === Paths.discover,
+  "settings signup moves to discover without leaving AppLayout",
+);
+assert(
+  leaveSettingsPathForOpenVerify(true, `${Paths.settings}?tab=tilt`) ===
+    Paths.discover,
+  "settings query string still counts as settings hub",
+);
+assert(
+  leaveSettingsPathForOpenVerify(true, "/profile") === Paths.discover,
+  "legacy profile path leaves settings hub",
+);
+assert(
+  leaveSettingsPathForOpenVerify(false, Paths.settings) === null,
+  "login verify on settings does not redirect",
+);
+assert(
+  routeUnmountsVerifySheet(Paths.recommend),
+  "recommend intro unmounts AppLayout verify sheet",
+);
+assert(
+  routeUnmountsVerifySheet(Paths.recommendSwipe),
+  "recommend swipe unmounts AppLayout verify sheet",
+);
+assert(
+  !routeUnmountsVerifySheet(Paths.discover),
+  "discover keeps AppLayout verify sheet mounted",
+);
+{
+  const next = leaveSettingsPathForOpenVerify(true, Paths.settings);
+  assert(
+    next != null && !routeUnmountsVerifySheet(next),
+    "leaving settings during verify must not unmount the sheet",
+  );
+}
 
 console.log("auth.self-check: ok");
