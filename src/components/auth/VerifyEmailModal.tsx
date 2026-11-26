@@ -20,6 +20,7 @@ export function VerifyEmailModal({
   open,
   email,
   fromRegister = false,
+  emailSent = true,
   onBack,
   onVerified,
 }: {
@@ -27,6 +28,8 @@ export function VerifyEmailModal({
   email: string;
   /** After Create Account: back returns to create. After login: back dismisses. */
   fromRegister?: boolean;
+  /** False when signup saved the account but the code email did not send. */
+  emailSent?: boolean;
   onBack: () => void;
   onVerified: () => void;
 }) {
@@ -39,6 +42,7 @@ export function VerifyEmailModal({
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [delivered, setDelivered] = useState(emailSent);
 
   const busy = sending || submitting;
   const resendLocked = busy || resendCooldown > 0;
@@ -50,26 +54,37 @@ export function VerifyEmailModal({
       setSubmitting(false);
       setCode("");
       setError("");
+      setDelivered(emailSent);
       initialSendStartedRef.current = false;
     }
-  }, [open]);
+  }, [open, emailSent]);
 
   // AC-VE-002: on first open, send once — unless register already sent a code.
+  // If that first email failed, try once here so Resend is not the only path.
   // Lock Resend while in flight; no cooldown yet.
   useEffect(() => {
     if (!open) return;
     if (initialSendStartedRef.current) return;
     initialSendStartedRef.current = true;
-    if (fromRegister) return;
+    if (fromRegister && emailSent) {
+      setDelivered(true);
+      return;
+    }
+    setDelivered(emailSent);
     setSending(true);
     void requestVerificationEmail()
       .then(({ ok }) => {
-        if (!ok) setError(verificationSendFailureMessage());
+        if (!ok) {
+          setDelivered(false);
+          setError(verificationSendFailureMessage());
+          return;
+        }
+        setDelivered(true);
       })
       .finally(() => {
         setSending(false);
       });
-  }, [open, fromRegister]);
+  }, [open, fromRegister, emailSent]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -128,9 +143,11 @@ export function VerifyEmailModal({
     try {
       const { ok } = await requestVerificationEmail();
       if (!ok) {
+        setDelivered(false);
         setError(verificationSendFailureMessage());
         return;
       }
+      setDelivered(true);
       setResendCooldown(45);
     } finally {
       setSending(false);
@@ -198,11 +215,23 @@ export function VerifyEmailModal({
                   Verify Your Email
                 </h2>
                 <p className="auth7-sheet-copy">
-                  Enter the verification code we sent to:
-                  <br />
-                  <strong className="auth7-verify-email">
-                    {email || "your email"}
-                  </strong>
+                  {delivered ? (
+                    <>
+                      Enter the verification code we sent to:
+                      <br />
+                      <strong className="auth7-verify-email">
+                        {email || "your email"}
+                      </strong>
+                    </>
+                  ) : (
+                    <>
+                      We could not email a verification code to{" "}
+                      <strong className="auth7-verify-email">
+                        {email || "your email"}
+                      </strong>
+                      . Tap Resend to try again.
+                    </>
+                  )}
                 </p>
               </header>
 

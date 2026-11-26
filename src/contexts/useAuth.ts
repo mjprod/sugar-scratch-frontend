@@ -59,6 +59,8 @@ export type AuthContextValue = {
   onVerifyBack: () => void;
   /** True when verify was opened from Create Account (affects back affordance). */
   verifyFromRegister: boolean;
+  /** False when signup saved the account but the code email did not send. */
+  verifyEmailSent: boolean;
   onEmailChanged: (email: string) => void;
   notePackPurchaseSeed: (creatorName?: string) => void;
   finishRecommendationAndResume: () => void;

@@ -307,31 +307,43 @@ export function AuthenticationSheet({
     }
   }
 
+  function focusAuthControl(id: string) {
+    window.setTimeout(() => {
+      panelRef.current?.querySelector<HTMLElement>(`#${id}`)?.focus();
+    }, 0);
+  }
+
   async function submitCreate(e: FormEvent) {
     e.preventDefault();
     if (!isValidEmail(email)) {
       setError("Enter a valid email address.");
+      focusAuthControl("auth7-email");
       return;
     }
     if (!isValidAuthPassword(password)) {
-      setError(`Use at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`);
+      setError(
+        `Password must be at least ${AUTH_PASSWORD_MIN_LENGTH} characters.`,
+      );
+      focusAuthControl("auth7-password");
       return;
     }
     if (!acceptedTerms) {
       setConsentError(true);
       setError("");
+      focusAuthControl("auth7-consent");
       return;
     }
     setSubmitting("email");
     setError("");
     setConsentError(false);
     try {
-      const { user } = await registerWithEmail(email.trim(), password);
+      const registered = await registerWithEmail(email.trim(), password);
       onSuccess({
-        email: user.email,
-        provider: user.provider,
-        user,
+        email: registered.user.email,
+        provider: registered.user.provider,
+        user: registered.user,
         source: "register",
+        verificationEmailSent: registered.verificationEmailSent,
       });
     } catch (err) {
       setSubmitting(null);
@@ -675,6 +687,7 @@ export function AuthenticationSheet({
                           <label className="auth7-field">
                             <span className="auth7-label">Email</span>
                             <input
+                              id="auth7-email"
                               type="email"
                               inputMode="email"
                               autoComplete="email"
@@ -682,7 +695,19 @@ export function AuthenticationSheet({
                               value={email}
                               placeholder="you@email.com"
                               disabled={busy}
-                              aria-invalid={emailFormatError ? true : undefined}
+                              aria-invalid={
+                                emailFormatError ||
+                                error === "Enter a valid email address."
+                                  ? true
+                                  : false
+                              }
+                              aria-describedby={
+                                emailFormatError
+                                  ? "auth7-email-error"
+                                  : error === "Enter a valid email address."
+                                    ? "auth7-form-error"
+                                    : undefined
+                              }
                               onChange={(e) => {
                                 setEmail(e.target.value);
                                 if (error === "Enter a valid email address.") {
@@ -692,7 +717,7 @@ export function AuthenticationSheet({
                             />
                           </label>
                           {emailFormatError ? (
-                            <p className="auth7-error" role="alert">
+                            <p id="auth7-email-error" className="auth7-error" role="alert">
                               {emailFormatError}
                             </p>
                           ) : null}
@@ -717,6 +742,16 @@ export function AuthenticationSheet({
                                 value={password}
                                 placeholder="Password"
                                 disabled={busy}
+                                aria-invalid={
+                                  error.startsWith("Password must be at least")
+                                    ? true
+                                    : false
+                                }
+                                aria-describedby={
+                                  error.startsWith("Password must be at least")
+                                    ? "auth7-form-error"
+                                    : undefined
+                                }
                                 onChange={(e) => setPassword(e.target.value)}
                               />
                               <button
@@ -787,6 +822,7 @@ export function AuthenticationSheet({
                                 }}
                               >
                                 <button
+                                  id="auth7-consent"
                                   type="button"
                                   role="checkbox"
                                   aria-checked={acceptedTerms}
@@ -859,7 +895,7 @@ export function AuthenticationSheet({
                           ) : null}
 
                           {error && error !== emailFormatError ? (
-                            <p className="auth7-error" role="alert">
+                            <p id="auth7-form-error" className="auth7-error" role="alert">
                               {error}
                             </p>
                           ) : null}
@@ -878,7 +914,10 @@ export function AuthenticationSheet({
                               }
                               costAmount={null}
                               strokeWidth={1}
-                              disabled={busy || !canSubmitPrimary}
+                              disabled={
+                                busy ||
+                                (mode !== "create-account" && !canSubmitPrimary)
+                              }
                             />
                           </div>
                         </form>

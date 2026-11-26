@@ -82,6 +82,11 @@ export type AuthSuccessResult = {
   user?: AuthUser;
   /** Which auth entry produced this session. */
   source?: "login" | "register" | "oauth";
+  /**
+   * Register only. False when the account was created but the code email
+   * did not go out. Missing means the server did not say, so treat as sent.
+   */
+  verificationEmailSent?: boolean;
 };
 
 export function isAuthenticated() {
@@ -159,7 +164,11 @@ export async function loginWithEmail(email: string, password: string) {
 }
 
 export async function registerWithEmail(email: string, password: string) {
-  return apiMutate<{ ok: boolean; user: AuthUser }>("/api/auth/register", {
+  return apiMutate<{
+    ok: boolean;
+    user: AuthUser;
+    verificationEmailSent?: boolean;
+  }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });

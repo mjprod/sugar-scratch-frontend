@@ -103,6 +103,25 @@ function isHighIntentForDefer(action: ProtectedAction) {
   );
 }
 
+function isSettingsPath(pathname: string) {
+  const path = pathname.split(/[?#]/)[0] ?? "";
+  return (
+    path === Paths.settings ||
+    path.startsWith(`${Paths.settings}/`) ||
+    path === "/profile" ||
+    path.startsWith("/profile/")
+  );
+}
+
+/** A new account should not finish signup on the Settings hub. */
+function shouldLeaveSettingsAfterRegister(action: ProtectedAction | null) {
+  if (typeof window !== "undefined" && isSettingsPath(window.location.pathname)) {
+    return true;
+  }
+  if (!action) return true;
+  return isProfileOnboardingResume(action);
+}
+
 /** Profile soft-gates must not resume after first-run onboarding (Discover instead). */
 function isProfileOnboardingResume(action: ProtectedAction) {
   if (action.type === "tab") return action.tab === "profile";
@@ -191,6 +210,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [verifyOpen, setVerifyOpen] = useState(false);
   /** True only when verify opened right after Create Account (back → recreate). */
   const [verifyFromRegister, setVerifyFromRegister] = useState(false);
+  /** False when register created the account but the code email did not send. */
+  const [verifyEmailSent, setVerifyEmailSent] = useState(true);
   const [verifyPending, setVerifyPending] = useState<ProtectedAction | null>(
     null,
   );
@@ -514,6 +535,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (authed) {
         if (actionNeedsVerifiedEmail(action) && needsEmailVerification()) {
           setVerifyFromRegister(false);
+          setVerifyEmailSent(true);
           setVerifyPending(action);
           setVerifyOpen(true);
           return false;
@@ -678,10 +700,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 (action != null && actionNeedsVerifiedEmail(action)));
             if (needsVerify) {
               setVerifyFromRegister(openedFromRegister);
+              setVerifyEmailSent(result.verificationEmailSent !== false);
               setVerifyPending(action);
               setVerifyOpen(true);
+              // The code sheet used to leave people on whatever page they
+              // opened signup from, including Settings.
+              if (
+                openedFromRegister &&
+                shouldLeaveSettingsAfterRegister(action)
+              ) {
+                applyRecommendationDecision(null);
+              }
               return;
             }
+            setVerifyEmailSent(true);
             applyRecommendationDecision(action);
           }, 0);
         }
@@ -924,6 +956,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       emailVerified,
       verifyOpen,
       verifyFromRegister,
+      verifyEmailSent,
       resumeLikeId,
       navNotice,
       purchasedPacks,
@@ -1011,6 +1044,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setPendingAfterRecFromSwipe,
       verifyOpen,
       verifyFromRegister,
+      verifyEmailSent,
     ],
   );
 

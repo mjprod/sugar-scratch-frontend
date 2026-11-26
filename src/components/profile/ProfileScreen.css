@@ -85,6 +85,13 @@ body[data-theme="v8"] .profile-hero-actions {
   margin-left: auto;
 }
 
+body[data-theme="v8"] .profile-hero-hint {
+  margin: var(--space-3) 0 0;
+  color: oklch(1 0 0 / 0.62);
+  font-size: var(--text-caption);
+  line-height: 1.4;
+}
+
 body[data-theme="v8"] .profile-action-btn:disabled {
   cursor: not-allowed;
   opacity: 0.5;

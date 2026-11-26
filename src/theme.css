@@ -461,7 +461,9 @@ body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow {
 }
 
 body[data-theme="v8"] .guest-home-landing__cta .cta-button-glow,
-body[data-theme="v8"] .guest-home-landing__cta .cta-button {
+body[data-theme="v8"] .guest-home-landing__cta .cta-button,
+body[data-theme="v8"] .guest-home-landing__cta .mcp-photo-play-cta-css-wrap,
+body[data-theme="v8"] .guest-home-landing__cta .mcp-photo-play-cta-css {
   pointer-events: auto;
   touch-action: manipulation;
 }
