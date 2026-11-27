@@ -74,6 +74,7 @@ import {
   type PurchaseFlowPack,
 } from "@/services/purchase";
 import { useAuth } from "@/contexts/useAuth";
+import { useWallet } from "@/contexts/WalletContext";
 import { holdPackForDiamondTopUp } from "@/services/packPurchaseHold";
 import { isDemoMode } from "@/lib/demo";
 import {
@@ -111,6 +112,8 @@ import {
   startMotionSession,
   loadGameSessionForPack,
   activateGameSessionForPack,
+  beginPhotoPhase,
+  settleDonePhotoHand,
 } from "@/features/game/modules/gameSession";
 import {
   loadGameCatalog,
@@ -279,6 +282,7 @@ export function PurchaseFlow({
   onInventoryChange?: () => void;
 }) {
   const { authed } = useAuth();
+  const { addCoins, addDiamonds } = useWallet();
   const bagResume = useRef(
     pack.entry === "scratch" ? getReadyToScratch(pack.packId) : null,
   ).current;
@@ -1361,6 +1365,15 @@ export function PurchaseFlow({
         (existing.phase === "photo_reveal" || existing.phase === "done")
       ) {
         activateGameSessionForPack(readyId);
+        if (existing.phase === "photo_reveal" && existing.wonPhotoIds.length > 0) {
+          // Won photo cards are still waiting — resume the photo scratch.
+          const started = beginPhotoPhase() ?? existing;
+          navigateTo(photoPlayHref(started));
+          return;
+        }
+        // Finished hand: bank any unsettled rewards once, drop the session so
+        // Collection doesn't keep a stale resume entry, then go to Collection.
+        settleDonePhotoHand(addDiamonds, addCoins);
         navigateTo(Paths.collection);
         return;
       }
