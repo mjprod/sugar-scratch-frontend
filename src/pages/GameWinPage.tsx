@@ -62,7 +62,7 @@ export function GameWinPage() {
   }, [payload]);
 
   if (!payload) {
-    return <Navigate to={Paths.game} replace />;
+    return <Navigate to={Paths.collection} replace />;
   }
 
   return (

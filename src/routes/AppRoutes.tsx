@@ -42,9 +42,6 @@ const GameWinPage = lazy(() =>
 const GameNowinPage = lazy(() =>
   import("@/pages/GameNowinPage").then((m) => ({ default: m.GameNowinPage })),
 );
-const NowinPage = lazy(() =>
-  import("@/pages/NowinPage").then((m) => ({ default: m.NowinPage })),
-);
 const PhotoScratchPage = lazy(() =>
   import("@/pages/PhotoScratchPage").then((m) => ({
     default: m.PhotoScratchPage,
@@ -62,6 +59,11 @@ const NoLabPage = () => null;
 const GameUiPage = LABS_ENABLED
   ? lazy(() =>
       import("@/pages/GameUiPage").then((m) => ({ default: m.GameUiPage })),
+    )
+  : NoLabPage;
+const NowinPage = LABS_ENABLED
+  ? lazy(() =>
+      import("@/pages/NowinPage").then((m) => ({ default: m.NowinPage })),
     )
   : NoLabPage;
 const AudioTestPage = LABS_ENABLED
@@ -471,7 +473,6 @@ export function AppRoutes() {
             />
             <Route path="game/win" element={<GameWinPage />} />
             <Route path="game/nowin" element={<GameNowinPage />} />
-            <Route path="nowin" element={<NowinPage />} />
             <Route
               path="game"
               element={
@@ -482,6 +483,7 @@ export function AppRoutes() {
             />
             {LABS_ENABLED && (
               <>
+                <Route path="nowin" element={<NowinPage />} />
                 <Route
                   path="coverflow-v2"
                   element={

@@ -1,6 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
 import { Navigate, useLocation, useSearchParams } from "react-router-dom";
-import { GameHub } from "@/features/game/GameHub";
 import { ScratchPrototype } from "@/features/game/scratch/ScratchPrototype";
 import { StageSoundsDebug } from "@/features/game/StageSoundsDebug";
 import scratchCss from "@/features/game/scratch/styles.css?inline";
@@ -130,7 +129,8 @@ export function GamePage() {
     );
   }
 
-  // Bare /game → pack-fan hub. model+card → scratch (collection or ?game=1 hand).
+  // Only a motion card can be played here. Bare /game (no model+card) has no
+  // hub any more — send the player back to My Collection.
   if (model && card) {
     return (
       <ScratchGameEmbed
@@ -139,12 +139,7 @@ export function GamePage() {
     );
   }
 
-  return (
-    <div className="app-shell app-shell--game-hub">
-      <GameHub />
-      <StageSoundsDebug />
-    </div>
-  );
+  return <Navigate to={Paths.collection} replace />;
 }
 
 export default GamePage;

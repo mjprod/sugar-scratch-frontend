@@ -1,4 +1,4 @@
-import "../gameHub.css";
+import "./PackNoMatchResult.css";
 
 /** Four-point Sugar sparkle, pinched at the waist. */
 function sparklePath(cx: number, cy: number, r: number) {

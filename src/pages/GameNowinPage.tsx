@@ -66,7 +66,7 @@ export function GameNowinPage() {
   }, [payload]);
 
   if (!payload) {
-    return <Navigate to={Paths.game} replace />;
+    return <Navigate to={Paths.collection} replace />;
   }
 
   return (

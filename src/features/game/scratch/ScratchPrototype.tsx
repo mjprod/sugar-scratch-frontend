@@ -5981,69 +5981,33 @@ export function ScratchPrototype({
     </div>
   );
 
-  function openModel(modelId: string) {
-    const ordered = playlistCardsForModel(cards, modelId);
-    setPlaylistMode(true);
-    singleCardIdRef.current = "";
-    setCompletedCardIds([]);
-    completedCardIdsRef.current = [];
-    setSelectedCardId("");
-    setActiveModelId(modelId);
-    setSelectedCardId(ordered[0]?.id ?? "");
-  }
-
-  if (showModelPicker) {
-    const playableModels = models.filter(
-      (model) => playlistCardsForModel(cards, model.id).length > 0,
-    );
+  function renderCardUnavailable() {
+    const copy = playlistFinished
+      ? "All motion cards in this hand are scratched."
+      : gameMode
+        ? "Couldn't load this game hand. Try leaving and starting again from your pack."
+        : "This motion card isn't available right now. It may have been removed or belongs to another model.";
     return (
       <main className="app-shell home-picker">
         <section className="home-picker-panel">
           <p className="eyebrow">Sugar Scratchie</p>
-          <h1>Choose a girl</h1>
-          <p className="home-picker-copy">
-            Play only her motion cards, in the order you set on Models.
-          </p>
-          <div className="home-picker-grid">
-            {playableModels.map((model) => {
-              const count = playlistCardsForModel(cards, model.id).length;
-              return (
-                <button
-                  key={model.id}
-                  type="button"
-                  className="home-picker-card"
-                  onClick={() => openModel(model.id)}
-                >
-                  <span className="home-picker-avatar">
-                    {model.avatar ? (
-                      <img alt="" src={model.avatar} />
-                    ) : (
-                      model.label.slice(0, 1)
-                    )}
-                  </span>
-                  <span className="home-picker-meta">
-                    <strong>{model.label}</strong>
-                    <span>
-                      {count} motion card{count === 1 ? "" : "s"}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {playableModels.length === 0 ? (
-            <p className="home-picker-empty">
-              No models with motion cards yet.{" "}
-              <a href="/collection">Back to My Collection</a>
-            </p>
-          ) : null}
-          <div className="home-picker-links">
-            <a href="/collection">My Collection</a>
+          <h1>Can&apos;t play this card</h1>
+          <p className="home-picker-copy">{copy}</p>
+          <div className="home-picker-actions">
+            {onLeave ? (
+              <button type="button" className="linkish" onClick={onLeave}>
+                Back
+              </button>
+            ) : (
+              <a href="/collection">My Collection</a>
+            )}
           </div>
         </section>
       </main>
     );
   }
+
+  if (showModelPicker) return renderCardUnavailable();
 
   // Keep the playable stage mounted while the catalog loads so the dual-video
   // elements aren't torn down/recreated (cold decoder attach = lag + desync).
@@ -6057,42 +6021,7 @@ export function ScratchPrototype({
     );
   }
 
-  if (!card) {
-    const missingCardCopy = playlistFinished
-      ? "All her motion cards are scratched — none left to repeat."
-      : gameMode
-        ? "Couldn't load this game hand. Try leaving and starting again from your pack."
-        : selectedCardId || singleCardIdRef.current
-          ? "This motion card isn't available right now. It may have been removed or belongs to another model."
-          : "This girl has no motion cards yet.";
-    return (
-      <main className="app-shell home-picker">
-        <section className="home-picker-panel">
-          <p className="eyebrow">Sugar Scratchie</p>
-          <h1>{activeModel?.label ?? "Can't play this card"}</h1>
-          <p className="home-picker-copy">{missingCardCopy}</p>
-          <div className="home-picker-links">
-            {!gameMode ? (
-              <button
-                type="button"
-                className="linkish"
-                onClick={() => {
-                  setActiveModelId("");
-                  setSelectedCardId("");
-                  singleCardIdRef.current = "";
-                  setCompletedCardIds([]);
-                  completedCardIdsRef.current = [];
-                }}
-              >
-                Choose another girl
-              </button>
-            ) : null}
-            <a href="/collection">My Collection</a>
-          </div>
-        </section>
-      </main>
-    );
-  }
+  if (!card) return renderCardUnavailable();
 
   return (
     <main className="app-shell">
@@ -6913,29 +6842,6 @@ export function ScratchPrototype({
                 ? ` · prizes ${gameSession.photoPrizeTotal}`
                 : ""}
             </p>
-          </div>
-          <div className="button-row">
-            {gameMode ? (
-              <a className="secondary-button" href="/collection">
-                Game
-              </a>
-            ) : (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => {
-                  setActiveModelId("");
-                  setSelectedCardId("");
-                  setCompletedCardIds([]);
-                  completedCardIdsRef.current = [];
-                }}
-              >
-                Girls
-              </button>
-            )}
-            <a className="secondary-button" href="/dashboard/models">
-              Models
-            </a>
           </div>
           <label>
             Card
