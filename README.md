@@ -43,6 +43,8 @@ Browser calls stay same-origin (`/api/...`, `/models/...`). Vite proxies them:
 
 Media prefixes are proxied **with a trailing slash** on purpose. Vite matches by string prefix, and some of them (e.g. `/photo-scratch`) are also SPA routes here. Without the slash, a reload on such a page is served by the operator app instead. For the same reason, don't put static assets under a path starting with a proxied prefix (see `scratchSound.ts`).
 
+The media proxy never forwards page navigations (`Accept: text/html`), and it turns an HTML answer from the media host (its `index.html` fallback for a missing file) into a 404, so the operator dashboard cannot appear inside the player. Player-owned assets (for example `public/scratch/`, `public/lottie/`) are served from this app; only operator-uploaded media is proxied.
+
 Copy `.env.example` → `.env` and restart Vite after changes. Optional `VITE_API_BASE_URL` prefixes absolute API URLs in production builds; leave empty in local dev.
 
 Live catalog HTTP goes through `src/lib/api.ts` (`apiFetch`).

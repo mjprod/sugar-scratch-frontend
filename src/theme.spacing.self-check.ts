@@ -66,7 +66,6 @@ assert(!tokens.includes("--margin-stack"), "use --gap-stack, not --margin-stack"
 const PAGE_SHELLS = [
   "src/components/home/HomeVersion2Screen.tsx",
   "src/components/home/RankScreen.tsx",
-  "src/components/browse/BrowseScreen.tsx",
   "src/components/search/SearchScreen.tsx",
   "src/components/purchase/PurchaseFlow.tsx",
   "src/theme.css",

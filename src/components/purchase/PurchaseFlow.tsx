@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HolographicPackCard } from "@/components/HolographicPackCard";
+import { Paths } from "@/routes/Paths";
 import { CtaButton, ctaButtonPropsFromTemplate } from "@/components/cta";
 import { DiamondLottie } from "@/components/ui/DiamondLottie";
 import { FirstPlayTutorial } from "@/components/game/FirstPlayTutorial";
@@ -1360,7 +1361,7 @@ export function PurchaseFlow({
         (existing.phase === "photo_reveal" || existing.phase === "done")
       ) {
         activateGameSessionForPack(readyId);
-        navigateTo("/game");
+        navigateTo(Paths.collection);
         return;
       }
       if (

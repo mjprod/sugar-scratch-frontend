@@ -88,6 +88,38 @@ export default defineConfig(({ mode }) => {
     };
   }
 
+  /**
+   * Media proxy that never lets the operator app's HTML shell reach the player:
+   * - page navigations (Accept: text/html) stay on this app's SPA;
+   * - a missing file on the media host answers with the operator index.html,
+   *   which is turned into a 404 instead of a dashboard page inside an <img>/<video>.
+   */
+  function mediaProxyTo(target: string) {
+    return {
+      ...proxyTo(target),
+      bypass(req: { headers: { accept?: string }; url?: string }) {
+        if (req.headers.accept?.includes("text/html")) return req.url;
+        return undefined;
+      },
+      configure(proxy: {
+        on: (
+          event: "proxyRes",
+          handler: (proxyRes: {
+            statusCode?: number;
+            headers: Record<string, string | string[] | undefined>;
+          }) => void,
+        ) => void;
+      }) {
+        proxy.on("proxyRes", (proxyRes) => {
+          const type = String(proxyRes.headers["content-type"] ?? "");
+          if (!/text\/html/i.test(type)) return;
+          proxyRes.statusCode = 404;
+          proxyRes.headers["content-type"] = "text/plain; charset=utf-8";
+        });
+      },
+    };
+  }
+
   console.info(`[vite] proxy /api → ${apiTarget}`);
   console.info(`[vite] proxy media → ${mediaTarget}`);
   console.info(
@@ -171,9 +203,8 @@ manualChunks(id) {
             "/symbols/",
             "/sounds/",
             "/themes/",
-            "/scratch/",
             "/cursor-fx/",
-          ].map((route) => [route, proxyTo(mediaTarget)]),
+          ].map((route) => [route, mediaProxyTo(mediaTarget)]),
         ),
       },
     },
